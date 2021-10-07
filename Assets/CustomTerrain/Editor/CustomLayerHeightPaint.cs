@@ -10,11 +10,17 @@ namespace SeasunTerrain
     [FilePath("Library/TerrainTools/CustomLayerHeight", FilePathAttribute.Location.ProjectFolder)]
     class CustomLayerHeightPaint : TerrainPaintTool<CustomLayerHeightPaint>
     {
+        public enum LoadHeightMapType
+        {
+            HeightSum = 0,
+            MaxHeight = 1,
+        }
+
         private enum HeightSpace
         {
             World,
             Local
-        }
+        }       
 
         private string paintName = "CustomLayerPaint";
 
@@ -23,6 +29,7 @@ namespace SeasunTerrain
         [SerializeField] float m_HeightScale = 1;
         [SerializeField] int m_HeightMapNumber = 1;
         [SerializeField] int m_CurrentHeightMapIdx = 0;
+        [SerializeField] LoadHeightMapType m_heightMapLoadType = LoadHeightMapType.HeightSum;
 
 
         class Styles
@@ -30,9 +37,6 @@ namespace SeasunTerrain
             public readonly GUIContent description = EditorGUIUtility.TrTextContent("地型高度编辑器，按左键编辑高度。");
 
             public readonly GUIContent heightMapNumber = EditorGUIUtility.TrTextContent("图层数量", "除基础图层外，附加图层的数量，最少为1");
-
-            //public readonly GUIContent overlayHeightMapTitle = EditorGUIUtility.TrTextContent("附加高度图", "可以覆盖基础高度，但不改写基础高度图");
-            //public readonly GUIContent detailHeightMapTitle = EditorGUIUtility.TrTextContent("细节高度图", "可以在前两层高度基础上调整高度");
 
             public readonly GUIContent currentHeightMapTypeTitle = EditorGUIUtility.TrTextContent("当前编辑层次");
             public readonly GUIContent reloadAllMapButtonTitle = EditorGUIUtility.TrTextContent("重新加载", "通过重新加载所有层次的高度图重新生成地型");
@@ -42,17 +46,15 @@ namespace SeasunTerrain
             public readonly GUIContent height = EditorGUIUtility.TrTextContent("画笔高度", "可以直接设置画笔高度，也可以在地形上按住shift和鼠标滚轮进行调整");
             public readonly GUIContent space = EditorGUIUtility.TrTextContent("高度值类型", "设置高度值为世界空间还是地型的模型空间");
 
-            //public readonly GUIContent clearLayer1Lable = EditorGUIUtility.TrTextContent("禁用层1", "清除第一层");
-            //public readonly GUIContent clearLayer2Lable = EditorGUIUtility.TrTextContent("禁用层2", "清除第二层");
-            //public readonly GUIContent clearAllLayerLable = EditorGUIUtility.TrTextContent("禁用所有", "清除所有附加层");
-
-            //public readonly GUIContent reloadLayer1Lable = EditorGUIUtility.TrTextContent("重载层1", "重新载入第一层");
-            //public readonly GUIContent reloadLayer2Lable = EditorGUIUtility.TrTextContent("重载层2", "重新载入第二层");
             public readonly GUIContent heightValueScale = EditorGUIUtility.TrTextContent("高度值缩放");
 
             public readonly GUIContent save = EditorGUIUtility.TrTextContent("保存", "保存所修改");
 
+            public readonly GUIContent loadTpe = EditorGUIUtility.TrTextContent("加载方式", "重新加载高度图的方式");
+            public string[] LayoutBlendType = new string[] { "相加", "取最高" };
+
             public string[] LayerNames = new string[] { "第1层" };
+
         }
 
         [Shortcut("Terrain/Custom Layers", typeof(TerrainToolShortcutContext), KeyCode.F10)]
@@ -299,6 +301,17 @@ namespace SeasunTerrain
 
             EditorGUILayout.EndHorizontal();
 
+            EditorGUILayout.BeginVertical();
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Label(styles.loadTpe);
+
+            EditorGUI.BeginChangeCheck();
+            this.m_heightMapLoadType = (LoadHeightMapType)EditorGUILayout.Popup((int)this.m_heightMapLoadType, styles.LayoutBlendType);
+            if (EditorGUI.EndChangeCheck())
+                Save(true);
+
+            EditorGUILayout.EndVertical();
+
             EditorGUILayout.BeginHorizontal();
             GUILayout.Label(styles.heightValueScale);
             EditorGUI.BeginChangeCheck();
@@ -306,6 +319,8 @@ namespace SeasunTerrain
             if (EditorGUI.EndChangeCheck())
                 Save(true);
             EditorGUILayout.EndHorizontal();
+
+            EditorGUILayout.EndVertical();
 
             if (this.waitToSaveTerrains.Count > 0)
             {

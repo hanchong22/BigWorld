@@ -173,17 +173,7 @@ namespace SeasunTerrain
                 this.heightMapList.Clear();
             }
 
-            this.changedIds.Clear();
-
-            //if (this.rtOverlayHeightMap)
-            //{
-            //    RenderTexture.ReleaseTemporary(this.rtOverlayHeightMap);
-            //}
-
-            //if (this.rtDetailHeightMap)
-            //{
-            //    RenderTexture.ReleaseTemporary(this.rtDetailHeightMap);
-            //}
+            this.changedIds.Clear();            
         }
 
         private void CheckOrInitData()
