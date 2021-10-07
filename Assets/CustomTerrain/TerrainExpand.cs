@@ -16,7 +16,7 @@ namespace SeasunTerrain
     {
 
 #if UNITY_EDITOR
-      
+
         private List<Texture2D> heightMapList;
 
         private Texture2D baseHeightMap;
@@ -24,16 +24,16 @@ namespace SeasunTerrain
         private TerrainData terrainData;
         private Terrain terrain;
         private string terrainDataPath;
-       
+
         private string baseHeightMapPath;
-       
+
 
         public List<RenderTexture> rtHeightMapList { get; private set; } = new List<RenderTexture>();
 
         public Texture2D BaseHeightMap { get => this.baseHeightMap; }
 
         private static float kNormalizedHeightScale => 32766.0f / 65535.0f;
-        private List<bool> changedIds = new List<bool>();        
+        private List<bool> changedIds = new List<bool>();
 
         private void Awake()
         {
@@ -126,8 +126,8 @@ namespace SeasunTerrain
                     this.heightMapList.Add(tex);
                 }
             }
-           
-            this.baseHeightMapPath = System.IO.Path.Combine(this.terrainDataPath, $"{this.terrainData.name}_baseHeightMap.asset");         
+
+            this.baseHeightMapPath = System.IO.Path.Combine(this.terrainDataPath, $"{this.terrainData.name}_baseHeightMap.asset");
 
             if (!this.baseHeightMap)
             {
@@ -173,7 +173,7 @@ namespace SeasunTerrain
                 this.heightMapList.Clear();
             }
 
-            this.changedIds.Clear();            
+            this.changedIds.Clear();
         }
 
         private void CheckOrInitData()
@@ -270,65 +270,11 @@ namespace SeasunTerrain
                         this.heightMapList[i] = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
                     }
                 }
-            }          
+            }
 
         }
 
-        public void DeleteLayer(int delIdx, float scale)
-        {
-            if (!this.baseHeightMap)
-            {
-                return;
-            }
-
-            this.CheckOrInitData();           
-
-            float[,] heights = new float[this.baseHeightMap.width, this.baseHeightMap.height];
-            for (int y = 0; y < this.baseHeightMap.height; ++y)
-            {
-                for (int x = 0; x < this.baseHeightMap.width; ++x)
-                {
-                    heights[y, x] = this.baseHeightMap.GetPixel(x, y).r * scale;
-
-                    for (int i = 0; i < this.heightMapList.Count; ++i)
-                    {
-                        if (i != delIdx)
-                        {
-                            Vector4 value = this.heightMapList[i].GetPixel(x, y);
-                            float height = value.x + value.y;
-                            float v = Mathf.Max(0, height);
-                            heights[y, x] += v * scale;
-                        }
-                    }                   
-                }
-            }
-
-            terrainData.SetHeights(0, 0, heights);
-        }
-
-        public void DeleteAllAddHeight(float scale)
-        {
-            if (!this.baseHeightMap)
-            {
-                return;
-            }
-
-            this.CheckOrInitData();
-
-            float[,] heights = new float[this.baseHeightMap.width, this.baseHeightMap.height];
-
-            for (int y = 0; y < this.baseHeightMap.height; ++y)
-            {
-                for (int x = 0; x < this.baseHeightMap.width; ++x)
-                {
-                    heights[y, x] = this.baseHeightMap.GetPixel(x, y).r * scale;
-                }
-            }
-
-            terrainData.SetHeights(0, 0, heights);
-        }
-
-        public void ReLoadLayer(float scale)
+        public void DeleteLayer(int delIdx, float scale, LoadHeightMapType reloadType)
         {
             if (!this.baseHeightMap)
             {
@@ -348,14 +294,97 @@ namespace SeasunTerrain
 
                     for (int i = 0; i < this.heightMapList.Count; ++i)
                     {
-                        Vector4 value = this.heightMapList[i].GetPixel(x, y);
-                        float height = value.x + value.y; 
-                        float v = Mathf.Max(0, height);
+                        if (TerrainManager.OnlyLoadSelectedLayer && !TerrainManager.SelectedLayer[i])
+                        {
+                            continue;
+                        }
 
-                        addHeight += v;
+                        if (i != delIdx)
+                        {
+                            Vector4 value = this.heightMapList[i].GetPixel(x, y);
+                            float height = value.x + value.y;
+                            float v = Mathf.Max(0, height);
+
+                            if (reloadType == LoadHeightMapType.HeightSum)
+                            {
+                                addHeight += v;
+                            }
+                            else if (reloadType == LoadHeightMapType.MaxHeight)
+                            {
+                                addHeight = Mathf.Max(v, addHeight);
+                            }
+                        }
                     }
 
-                    heights[y, x] += addHeight * scale;                  
+                    heights[y, x] += addHeight * scale;
+                }
+            }
+
+            terrainData.SetHeights(0, 0, heights);
+        }
+
+        public void DeleteAllAddHeight(float scale, LoadHeightMapType reloadType)
+        {
+            if (!this.baseHeightMap)
+            {
+                return;
+            }
+
+            this.CheckOrInitData();
+
+            float[,] heights = new float[this.baseHeightMap.width, this.baseHeightMap.height];
+
+            for (int y = 0; y < this.baseHeightMap.height; ++y)
+            {
+                for (int x = 0; x < this.baseHeightMap.width; ++x)
+                {
+                    heights[y, x] = this.baseHeightMap.GetPixel(x, y).r * scale;
+                }
+            }
+
+            terrainData.SetHeights(0, 0, heights);
+        }
+
+        public void ReLoadLayer(float scale, LoadHeightMapType reloadType)
+        {
+            if (!this.baseHeightMap)
+            {
+                return;
+            }
+
+            this.CheckOrInitData();
+
+            float[,] heights = new float[this.baseHeightMap.width, this.baseHeightMap.height];
+            for (int y = 0; y < this.baseHeightMap.height; ++y)
+            {
+                for (int x = 0; x < this.baseHeightMap.width; ++x)
+                {
+                    heights[y, x] = this.baseHeightMap.GetPixel(x, y).r * scale;
+
+                    float addHeight = 0;
+
+                    for (int i = 0; i < this.heightMapList.Count; ++i)
+                    {
+                        if (TerrainManager.OnlyLoadSelectedLayer && !TerrainManager.SelectedLayer[i])
+                        {
+                            continue;
+                        }
+
+                        Vector4 value = this.heightMapList[i].GetPixel(x, y);
+                        float height = value.x + value.y;
+                        float v = Mathf.Max(0, height);
+
+                        if (reloadType == LoadHeightMapType.HeightSum)
+                        {
+                            addHeight += v;
+                        }
+                        else if (reloadType == LoadHeightMapType.MaxHeight)
+                        {
+                            addHeight = Mathf.Max(v, addHeight);
+                        }
+                    }
+
+                    heights[y, x] += addHeight * scale;
                 }
             }
 

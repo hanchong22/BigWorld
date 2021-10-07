@@ -10,17 +10,11 @@ namespace SeasunTerrain
     [FilePath("Library/TerrainTools/CustomLayerHeight", FilePathAttribute.Location.ProjectFolder)]
     class CustomLayerHeightPaint : TerrainPaintTool<CustomLayerHeightPaint>
     {
-        public enum LoadHeightMapType
-        {
-            HeightSum = 0,
-            MaxHeight = 1,
-        }
-
         private enum HeightSpace
         {
             World,
             Local
-        }       
+        }
 
         private string paintName = "CustomLayerPaint";
 
@@ -30,6 +24,8 @@ namespace SeasunTerrain
         [SerializeField] int m_HeightMapNumber = 1;
         [SerializeField] int m_CurrentHeightMapIdx = 0;
         [SerializeField] LoadHeightMapType m_heightMapLoadType = LoadHeightMapType.HeightSum;
+        [SerializeField] bool m_loadSelectedLayersOnly = false;
+        [SerializeField] bool[] m_selectedLyaers = new bool[] { true };
 
 
         class Styles
@@ -81,9 +77,13 @@ namespace SeasunTerrain
         private void InitLayerNumberString(Styles styles)
         {
             styles.LayerNames = new string[this.m_HeightMapNumber];
+            bool[] tmp = this.m_selectedLyaers;
+            this.m_selectedLyaers = new bool[this.m_HeightMapNumber];
+
             for (int i = 0; i < this.m_HeightMapNumber; ++i)
             {
                 styles.LayerNames[i] = $"第{i + 1}层";
+                this.m_selectedLyaers[i] = tmp.Length > i ? tmp[i] : true;
             }
         }
 
@@ -100,7 +100,9 @@ namespace SeasunTerrain
 
         public override void OnEnable()
         {
-            TerrainManager.InitAllTerrain(this.m_HeightMapNumber);
+            TerrainManager.InitAllTerrain(this.m_HeightMapNumber, this.m_CurrentHeightMapIdx);
+            TerrainManager.OnlyLoadSelectedLayer = this.m_loadSelectedLayersOnly;
+            TerrainManager.SelectedLayer = this.m_selectedLyaers;
             this.InitLayerNumberString(this.GetStyles());
         }
 
@@ -221,15 +223,15 @@ namespace SeasunTerrain
                         m_TargetHeight = Mathf.Clamp(m_TargetHeight, terrain.GetPosition().y, terrain.terrainData.size.y + terrain.GetPosition().y);
                 }
 
-                // EditorGUI.BeginChangeCheck();
+                EditorGUI.BeginChangeCheck();
 
                 if (m_HeightSpace == HeightSpace.Local)
                     m_TargetHeight = EditorGUILayout.Slider(styles.height, m_TargetHeight - terrain.GetPosition().y, 0, terrain.terrainData.size.y) + terrain.GetPosition().y;
                 else
                     m_TargetHeight = EditorGUILayout.FloatField(styles.height, m_TargetHeight);
 
-                // if (EditorGUI.EndChangeCheck())
-                //    Save(true);                
+                if (EditorGUI.EndChangeCheck())
+                    Save(true);
 
                 EditorGUILayout.BeginHorizontal();
                 {
@@ -241,9 +243,11 @@ namespace SeasunTerrain
                     GUILayout.Label(styles.currentHeightMapTypeTitle);
                     if (EditorGUI.EndChangeCheck())
                     {
+                        Save(true);
                         this.InitLayerNumberString(styles);
 
-                        TerrainManager.InitAllTerrain(this.m_HeightMapNumber);
+                        TerrainManager.InitAllTerrain(this.m_HeightMapNumber, this.m_CurrentHeightMapIdx);
+                        TerrainManager.SelectedLayer = this.m_selectedLyaers;
                     }
 
                     this.m_CurrentHeightMapIdx = EditorGUILayout.Popup(this.m_CurrentHeightMapIdx, styles.LayerNames);
@@ -261,12 +265,12 @@ namespace SeasunTerrain
             {
                 if (TerrainManager.AllTerrain.Count == 0)
                 {
-                    TerrainManager.InitAllTerrain(this.m_HeightMapNumber);
+                    TerrainManager.InitAllTerrain(this.m_HeightMapNumber, this.m_CurrentHeightMapIdx);
                 }
 
                 for (int i = 0; i < TerrainManager.AllTerrain.Count; ++i)
                 {
-                    TerrainManager.AllTerrain[i].GetComponent<TerrainExpand>()?.DeleteLayer(this.m_CurrentHeightMapIdx, this.m_HeightScale);
+                    TerrainManager.AllTerrain[i].GetComponent<TerrainExpand>()?.DeleteLayer(this.m_CurrentHeightMapIdx, this.m_HeightScale, this.m_heightMapLoadType);
                 }
             }
 
@@ -274,12 +278,12 @@ namespace SeasunTerrain
             {
                 if (TerrainManager.AllTerrain.Count == 0)
                 {
-                    TerrainManager.InitAllTerrain(this.m_CurrentHeightMapIdx);
+                    TerrainManager.InitAllTerrain(this.m_CurrentHeightMapIdx, this.m_CurrentHeightMapIdx);
                 }
 
                 for (int i = 0; i < TerrainManager.AllTerrain.Count; ++i)
                 {
-                    TerrainManager.AllTerrain[i].GetComponent<TerrainExpand>()?.DeleteAllAddHeight(this.m_HeightScale);
+                    TerrainManager.AllTerrain[i].GetComponent<TerrainExpand>()?.DeleteAllAddHeight(this.m_HeightScale, this.m_heightMapLoadType);
                 }
             }
 
@@ -290,12 +294,12 @@ namespace SeasunTerrain
             {
                 if (TerrainManager.AllTerrain.Count == 0)
                 {
-                    TerrainManager.InitAllTerrain(this.m_CurrentHeightMapIdx);
+                    TerrainManager.InitAllTerrain(this.m_CurrentHeightMapIdx, this.m_CurrentHeightMapIdx);
                 }
 
                 for (int i = 0; i < TerrainManager.AllTerrain.Count; ++i)
                 {
-                    TerrainManager.AllTerrain[i].GetComponent<TerrainExpand>()?.ReLoadLayer(this.m_HeightScale);
+                    TerrainManager.AllTerrain[i].GetComponent<TerrainExpand>()?.ReLoadLayer(this.m_HeightScale, this.m_heightMapLoadType);
                 }
             }
 
@@ -319,6 +323,38 @@ namespace SeasunTerrain
             if (EditorGUI.EndChangeCheck())
                 Save(true);
             EditorGUILayout.EndHorizontal();
+
+            EditorGUILayout.BeginVertical();
+            EditorGUI.BeginChangeCheck();
+            this.m_loadSelectedLayersOnly = EditorGUILayout.BeginToggleGroup("仅加载选择的层", this.m_loadSelectedLayersOnly);
+            if (m_loadSelectedLayersOnly)
+            {
+                for (int i = 0; i < this.m_HeightMapNumber; ++i)
+                {
+                    EditorGUILayout.BeginHorizontal();
+                    GUILayout.Label(styles.LayerNames[i]);
+                    this.m_selectedLyaers[i] = EditorGUILayout.Toggle(this.m_selectedLyaers[i]);
+                    EditorGUILayout.EndHorizontal();
+                }
+            }
+            EditorGUILayout.EndToggleGroup();
+            if (EditorGUI.EndChangeCheck())
+            {
+                TerrainManager.OnlyLoadSelectedLayer = this.m_loadSelectedLayersOnly;
+                if (this.m_loadSelectedLayersOnly)
+                {
+                    TerrainManager.SelectedLayer = this.m_selectedLyaers;
+                }
+                else
+                {
+                    TerrainManager.SelectedLayer = null;
+                }
+
+                Save(true);
+            }
+
+            EditorGUILayout.EndVertical();
+
 
             EditorGUILayout.EndVertical();
 
