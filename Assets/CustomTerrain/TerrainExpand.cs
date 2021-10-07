@@ -244,8 +244,6 @@ namespace SeasunTerrain
             }
             GL.PopMatrix();
 
-            //Rect readRect = new Rect(this.dstPixels.center.x - this.dstPixels.width / 2, this.dstPixels.center.y - this.dstPixels.height / 2, this.dstPixels.width, this.dstPixels.height);
-            //targetTex.ReadPixels(readRect, (int)readRect.x, (int)readRect.y);
             targetTex.ReadPixels(new Rect(0, 0, targetRt.width, targetRt.height), 0, 0);
             targetTex.Apply();
             RenderTexture.active = oldRT;
@@ -288,9 +286,7 @@ namespace SeasunTerrain
             {
                 for (int x = 0; x < this.baseHeightMap.width; ++x)
                 {
-                    heights[y, x] = this.baseHeightMap.GetPixel(x, y).r * scale;
-
-                    float addHeight = 0;
+                    float addHeight = this.baseHeightMap.GetPixel(x, y).r;
 
                     for (int i = 0; i < this.heightMapList.Count; ++i)
                     {
@@ -316,7 +312,7 @@ namespace SeasunTerrain
                         }
                     }
 
-                    heights[y, x] += addHeight * scale;
+                    heights[y, x] = addHeight * scale;
                 }
             }
 
@@ -359,9 +355,7 @@ namespace SeasunTerrain
             {
                 for (int x = 0; x < this.baseHeightMap.width; ++x)
                 {
-                    heights[y, x] = this.baseHeightMap.GetPixel(x, y).r * scale;
-
-                    float addHeight = 0;
+                    float addHeight = this.baseHeightMap.GetPixel(x, y).r;
 
                     for (int i = 0; i < this.heightMapList.Count; ++i)
                     {
@@ -384,7 +378,7 @@ namespace SeasunTerrain
                         }
                     }
 
-                    heights[y, x] += addHeight * scale;
+                    heights[y, x] = addHeight * scale;
                 }
             }
 
