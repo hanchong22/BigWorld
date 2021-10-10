@@ -205,8 +205,7 @@ namespace SeasunTerrain
 
         public void OnPaint(int heightMapIdx, PaintContext editContext, int tileIndex, Material brushMat)
         {
-            // Shader : Hidden/TerrainEngine/HeightBlitCopy
-            Material blitMaterial = TerrainPaintUtility.GetHeightBlitMaterial();
+            Material blitMaterial = TerrainManager.GetHeightSubtractionMat();
 
             this.CheckOrInitData();
 
@@ -215,12 +214,13 @@ namespace SeasunTerrain
 
             RenderTexture oldRT = RenderTexture.active;
             RenderTexture targetRt = null;
-            RenderTexture sourceRt = editContext.destinationRenderTexture;
+            RenderTexture sourceRt = editContext.destinationRenderTexture;      //绘制结果：原地型高度 + 笔刷   
+            RenderTexture oldTerrainHeight = editContext.sourceRenderTexture;   //原地型高度
             Texture2D targetTex = null;
 
             this.CheckOrInitData();
 
-            this.dstPixels = editContext.GetClippedPixelRectInTerrainPixels(tileIndex);  //画笔触及的区域（地型的相对坐标）
+            this.dstPixels = editContext.GetClippedPixelRectInTerrainPixels(tileIndex);         //画笔触及的区域（地型的相对坐标）
             this.sourcePixels = editContext.GetClippedPixelRectInRenderTexturePixels(tileIndex); //画笔与当前地型块重叠的区域 （相对于画笔图章）
 
             targetRt = this.rtHeightMapList[heightMapIdx];
@@ -237,8 +237,9 @@ namespace SeasunTerrain
                 sourceRt.filterMode = FilterMode.Point;
 
                 blitMaterial.SetTexture("_MainTex", sourceRt);
+                blitMaterial.SetTexture("_OldHeightMap", oldTerrainHeight);
                 blitMaterial.SetPass(0);
-                TerrainExpand.DrawQuad(dstPixels, sourcePixels, sourceRt);
+                TerrainManager.DrawQuad(dstPixels, sourcePixels, sourceRt);
 
                 sourceRt.filterMode = oldFilterMode;
             }
@@ -394,46 +395,6 @@ namespace SeasunTerrain
 
             RenderTexture.active = oldRT;
         }
-
-        static void DrawQuad(RectInt destinationPixels, RectInt sourcePixels, Texture sourceTexture)
-        {
-            DrawQuad2(destinationPixels, sourcePixels, sourceTexture, sourcePixels, sourceTexture);
-        }
-
-        static void DrawQuad2(RectInt destinationPixels, RectInt sourcePixels, Texture sourceTexture, RectInt sourcePixels2, Texture sourceTexture2)
-        {
-            if ((destinationPixels.width > 0) && (destinationPixels.height > 0))
-            {
-                Rect sourceUVs = new Rect(
-                    (sourcePixels.x) / (float)sourceTexture.width,
-                    (sourcePixels.y) / (float)sourceTexture.height,
-                    (sourcePixels.width) / (float)sourceTexture.width,
-                    (sourcePixels.height) / (float)sourceTexture.height);
-
-                Rect sourceUVs2 = new Rect(
-                    (sourcePixels2.x) / (float)sourceTexture2.width,
-                    (sourcePixels2.y) / (float)sourceTexture2.height,
-                    (sourcePixels2.width) / (float)sourceTexture2.width,
-                    (sourcePixels2.height) / (float)sourceTexture2.height);
-
-                GL.Begin(GL.QUADS);
-                GL.Color(new Color(1.0f, 1.0f, 1.0f, 1.0f));
-                GL.MultiTexCoord2(0, sourceUVs.x, sourceUVs.y);
-                GL.MultiTexCoord2(1, sourceUVs2.x, sourceUVs2.y);
-                GL.Vertex3(destinationPixels.x, destinationPixels.y, 0.0f);
-                GL.MultiTexCoord2(0, sourceUVs.x, sourceUVs.yMax);
-                GL.MultiTexCoord2(1, sourceUVs2.x, sourceUVs2.yMax);
-                GL.Vertex3(destinationPixels.x, destinationPixels.yMax, 0.0f);
-                GL.MultiTexCoord2(0, sourceUVs.xMax, sourceUVs.yMax);
-                GL.MultiTexCoord2(1, sourceUVs2.xMax, sourceUVs2.yMax);
-                GL.Vertex3(destinationPixels.xMax, destinationPixels.yMax, 0.0f);
-                GL.MultiTexCoord2(0, sourceUVs.xMax, sourceUVs.y);
-                GL.MultiTexCoord2(1, sourceUVs2.xMax, sourceUVs2.y);
-                GL.Vertex3(destinationPixels.xMax, destinationPixels.y, 0.0f);
-                GL.End();
-            }
-        }
-
 #endif
     }
 }

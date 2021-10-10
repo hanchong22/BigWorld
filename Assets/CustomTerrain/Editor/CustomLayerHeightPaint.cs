@@ -119,6 +119,31 @@ namespace SeasunTerrain
 
             TerrainPaintUtility.SetupTerrainToolMaterialProperties(paintContext, brushXform, mat);
 
+            //sourceRenderTexture:原地型高度图
+            //destinationRenderTexture:目标
+            //brushTexture: 笔刷
+            //通过以下操作，将原地型高度图 + 笔刷，生成新的高度图到目标缓冲区destinationRenderTexture
+            Graphics.Blit(paintContext.sourceRenderTexture, paintContext.destinationRenderTexture, mat, (int)TerrainPaintUtility.BuiltinPaintMaterialPasses.SetHeights);
+
+            return mat;
+        }
+
+        private Material ApplyBrushFromBaseHeightInternal(PaintContext paintContext, float brushStrength, Texture brushTexture, BrushTransform brushXform, Terrain terrain)
+        {          
+            Material mat = TerrainManager.GetPaintHeightExtMat();
+
+            float brushTargetHeight = Mathf.Clamp01((m_TargetHeight - paintContext.heightWorldSpaceMin) / paintContext.heightWorldSpaceSize);
+
+            Vector4 brushParams = new Vector4(brushStrength * 0.01f, PaintContext.kNormalizedHeightScale * brushTargetHeight, 0.0f, 0.0f);
+            mat.SetTexture("_BrushTex", brushTexture);
+            mat.SetVector("_BrushParams", brushParams);
+
+            TerrainPaintUtility.SetupTerrainToolMaterialProperties(paintContext, brushXform, mat);
+
+            //sourceRenderTexture:原地型高度图
+            //destinationRenderTexture:目标
+            //brushTexture: 笔刷
+            //通过以下操作，将原地型高度图 + 笔刷，生成新的高度图到目标缓冲区destinationRenderTexture
             Graphics.Blit(paintContext.sourceRenderTexture, paintContext.destinationRenderTexture, mat, (int)TerrainPaintUtility.BuiltinPaintMaterialPasses.SetHeights);
 
             return mat;
@@ -134,25 +159,29 @@ namespace SeasunTerrain
             }
 
             BrushTransform brushXform = TerrainPaintUtility.CalculateBrushTransform(terrain, editContext.uv, editContext.brushSize, 0.0f);
-            PaintContext paintContext = TerrainPaintUtility.BeginPaintHeightmap(terrain, brushXform.GetBrushXYBounds());
 
-            var mat = ApplyBrushInternal(paintContext, editContext.brushStrength, editContext.brushTexture, brushXform, terrain);
-
-            for (int i = 0; i < paintContext.terrainCount; ++i)
+            PaintContextExp paintContextTmp = TerrainManager.BeginPaintHeightMapLyaer(terrain, brushXform.GetBrushXYBounds(),this.m_CurrentHeightMapIdx);
+            var matTmp = ApplyBrushFromBaseHeightInternal(paintContextTmp, editContext.brushStrength, editContext.brushTexture, brushXform, terrain);
+            for (int i = 0; i < paintContextTmp.terrainCount; ++i)
             {
-                TerrainExpand terrainExpandData = paintContext.GetTerrain(i).gameObject.GetComponent<TerrainExpand>();
+                TerrainExpand terrainExpandData = paintContextTmp.GetTerrain(i).gameObject.GetComponent<TerrainExpand>();
                 if (!terrainExpandData)
                 {
-                    terrainExpandData = paintContext.GetTerrain(i).gameObject.AddComponent<TerrainExpand>();
+                    terrainExpandData = paintContextTmp.GetTerrain(i).gameObject.AddComponent<TerrainExpand>();
                 }
 
-                terrainExpandData.OnPaint(this.m_CurrentHeightMapIdx, paintContext, i, mat);
+                terrainExpandData.OnPaint(this.m_CurrentHeightMapIdx, paintContextTmp, i, matTmp);
 
                 if (!this.waitToSaveTerrains.Contains(terrainExpandData))
                 {
                     this.waitToSaveTerrains.Add(terrainExpandData);
                 }
             }
+
+            paintContextTmp.Cleanup();
+
+            PaintContext paintContext = TerrainPaintUtility.BeginPaintHeightmap(terrain, brushXform.GetBrushXYBounds());
+            var mat = ApplyBrushInternal(paintContext, editContext.brushStrength, editContext.brushTexture, brushXform, terrain);           
 
             TerrainPaintUtility.EndPaintHeightmap(paintContext, "Terrain Paint - CustomLayerHeight");
 
