@@ -270,76 +270,35 @@ namespace SeasunTerrain
                     }
                 }
             }
-
         }
 
-        public void DeleteLayer(int delIdx, float scale, LoadHeightMapType reloadType)
+        public void RemoveLayer(int idx)
         {
-            if (!this.baseHeightMap)
+            if(idx >= this.heightMapList.Count)
             {
                 return;
             }
 
-            this.CheckOrInitData();
+            Texture2D waitToDelTex = this.heightMapList[idx];
+            RenderTexture waitToDelRt = this.rtHeightMapList[idx];
 
-            float[,] heights = new float[this.baseHeightMap.width, this.baseHeightMap.height];
-            for (int y = 0; y < this.baseHeightMap.height; ++y)
+            string path = AssetDatabase.GetAssetPath(waitToDelTex);
+
+            AssetDatabase.DeleteAsset(path);
+            GameObject.DestroyImmediate(waitToDelTex);
+            RenderTexture.ReleaseTemporary(waitToDelRt);
+
+            
+            for(int i = idx + 1; i < this.heightMapList.Count; ++i)
             {
-                for (int x = 0; x < this.baseHeightMap.width; ++x)
-                {
-                    float addHeight = this.baseHeightMap.GetPixel(x, y).r;
-
-                    for (int i = 0; i < this.heightMapList.Count; ++i)
-                    {
-                        if (TerrainManager.OnlyLoadSelectedLayer && !TerrainManager.SelectedLayer[i])
-                        {
-                            continue;
-                        }
-
-                        if (i != delIdx)
-                        {
-                            Vector4 value = this.heightMapList[i].GetPixel(x, y);
-                            float height = value.x + value.y;
-                            float v = Mathf.Max(0, height);
-
-                            if (reloadType == LoadHeightMapType.HeightSum)
-                            {
-                                addHeight += v;
-                            }
-                            else if (reloadType == LoadHeightMapType.MaxHeight)
-                            {
-                                addHeight = Mathf.Max(v, addHeight);
-                            }
-                        }
-                    }
-
-                    heights[y, x] = addHeight * scale;
-                }
+                string tmpPath = AssetDatabase.GetAssetPath(this.heightMapList[i]);
+                AssetDatabase.RenameAsset(tmpPath, path);
+                this.heightMapList[i] = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+                path = tmpPath;
             }
 
-            terrainData.SetHeights(0, 0, heights);
-        }
-
-        public void DeleteAllAddHeight(float scale, LoadHeightMapType reloadType)
-        {
-            if (!this.baseHeightMap)
-            {
-                return;
-            }
-
-            this.CheckOrInitData();
-
-            float[,] heights = new float[this.baseHeightMap.width, this.baseHeightMap.height];
-
-            for (int y = 0; y < this.baseHeightMap.height; ++y)
-            {
-                for (int x = 0; x < this.baseHeightMap.width; ++x)
-                {
-                    heights[y, x] = this.baseHeightMap.GetPixel(x, y).r * scale;
-                }
-            }
-
-            terrainData.SetHeights(0, 0, heights);
+            this.heightMapList.RemoveAt(idx);
+            this.rtHeightMapList.RemoveAt(idx);            
         }
 
         public void ReLoadLayer(float scale, LoadHeightMapType reloadType)
@@ -360,7 +319,7 @@ namespace SeasunTerrain
 
                     for (int i = 0; i < this.heightMapList.Count; ++i)
                     {
-                        if (TerrainManager.OnlyLoadSelectedLayer && !TerrainManager.SelectedLayer[i])
+                        if (!TerrainManager.SelectedLayer[i])
                         {
                             continue;
                         }
