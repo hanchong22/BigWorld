@@ -301,7 +301,7 @@ namespace SeasunTerrain
             this.rtHeightMapList.RemoveAt(idx);            
         }
 
-        public void ReLoadLayer(float scale, LoadHeightMapType reloadType)
+        public void ReLoadLayer(float scale)
         {
             if (!this.baseHeightMap)
             {
@@ -327,15 +327,7 @@ namespace SeasunTerrain
                         Vector4 value = this.heightMapList[i].GetPixel(x, y);
                         float height = value.x + value.y;
                         float v = Mathf.Max(0, height);
-
-                        if (reloadType == LoadHeightMapType.HeightSum)
-                        {
-                            addHeight += v;
-                        }
-                        else if (reloadType == LoadHeightMapType.MaxHeight)
-                        {
-                            addHeight = Mathf.Max(v, addHeight);
-                        }
+                        addHeight += v;
                     }
 
                     heights[y, x] = addHeight * scale;

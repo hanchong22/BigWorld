@@ -16,7 +16,6 @@ namespace SeasunTerrain
         [SerializeField] float m_HeightScale = 1;
         [SerializeField] int m_HeightMapNumber = 1;
         [SerializeField] int m_CurrentHeightMapIdx = 0;
-        [SerializeField] LoadHeightMapType m_heightMapLoadType = LoadHeightMapType.HeightSum;
         [SerializeField] bool[] m_selectedLyaers = new bool[] { true };
         [SerializeField] string[] m_heightMapTitles;
 
@@ -24,15 +23,9 @@ namespace SeasunTerrain
         class Styles
         {
             public readonly GUIContent description = EditorGUIUtility.TrTextContent("地型高度编辑器，按左键编辑高度，按Shift + 左键擦除高度。");
-
             public readonly GUIContent height = EditorGUIUtility.TrTextContent("画笔高度", "可以直接设置画笔高度，也可以在地形上按住shift和鼠标滚轮进行调整");
-
             public readonly GUIContent heightValueScale = EditorGUIUtility.TrTextContent("高度值缩放");
-
-            public readonly GUIContent save = EditorGUIUtility.TrTextContent("保存", "保存所修改");
-
-            public readonly GUIContent loadTpe = EditorGUIUtility.TrTextContent("加载方式", "重新加载高度图的方式");
-            public string[] LayoutBlendType = new string[] { "相加", "取最高" };
+            public readonly GUIContent save = EditorGUIUtility.TrTextContent("保存", "保存所修改");            
         }
 
         [Shortcut("Terrain/Custom Layers", typeof(TerrainToolShortcutContext), KeyCode.F10)]
@@ -208,16 +201,6 @@ namespace SeasunTerrain
                     Save(true);
             }
 
-            EditorGUILayout.BeginVertical();
-            EditorGUILayout.BeginHorizontal();
-            GUILayout.Label(styles.loadTpe);
-
-            EditorGUI.BeginChangeCheck();
-            this.m_heightMapLoadType = (LoadHeightMapType)EditorGUILayout.Popup((int)this.m_heightMapLoadType, styles.LayoutBlendType);
-            if (EditorGUI.EndChangeCheck())
-                Save(true);
-
-            EditorGUILayout.EndVertical();
 
             EditorGUILayout.BeginHorizontal();
             GUILayout.Label(styles.heightValueScale);
@@ -227,9 +210,9 @@ namespace SeasunTerrain
                 Save(true);
             EditorGUILayout.EndHorizontal();
 
-            this.DrawLayers();
+            GUILayout.Space(2);
 
-            EditorGUILayout.EndVertical();
+            this.DrawLayers();
 
             if (this.waitToSaveTerrains.Count > 0)
             {
@@ -403,7 +386,7 @@ namespace SeasunTerrain
 
             for (int i = 0; i < TerrainManager.AllTerrain.Count; ++i)
             {
-                TerrainManager.AllTerrain[i].GetComponent<TerrainExpand>()?.ReLoadLayer(this.m_HeightScale, this.m_heightMapLoadType);
+                TerrainManager.AllTerrain[i].GetComponent<TerrainExpand>()?.ReLoadLayer(this.m_HeightScale);
             }
         }
 

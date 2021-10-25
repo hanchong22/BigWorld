@@ -7,12 +7,6 @@ using System.Collections.Generic;
 
 namespace SeasunTerrain
 {
-    public enum LoadHeightMapType
-    {
-        HeightSum = 0,
-        MaxHeight = 1,
-    }
-
     public static class TerrainManager
     {
         public static List<Terrain> AllTerrain { get; private set; } = new List<Terrain>();
