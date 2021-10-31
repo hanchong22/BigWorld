@@ -21,6 +21,15 @@ namespace SeasunTerrain
         [SerializeField] string[] m_heightMapTitles;
         [SerializeField] bool m_IsBaseLayerEnable = true;
 
+        enum ExpImportStatus
+        {
+            None = 0,
+            Export = 1,
+            Import = 2,
+        };
+
+        //=0 无 =1导出状态 =2导入状态
+        private ExpImportStatus expImportStatus = 0;
 
         class Styles
         {
@@ -231,6 +240,12 @@ namespace SeasunTerrain
 
             this.DrawLayers();
 
+            GUILayout.Space(3);
+
+            this.ExportImportLayers();
+
+            GUILayout.Space(3);
+
             if (this.waitToSaveTerrains.Count > 0)
             {
                 if (GUILayout.Button(styles.save))
@@ -248,6 +263,9 @@ namespace SeasunTerrain
         #region 图层
 
         int titleEditorIdx = -1;
+        int importType = 0; //=0 current Terraon; =1 all Terrains
+        int exportLayersType = 0;
+        int exportTerrainsType = 0;
 
         private void DrawLayers()
         {
@@ -436,6 +454,89 @@ namespace SeasunTerrain
             }
 
             EditorGUILayout.EndVertical();
+        }
+
+        private void ExportImportLayers()
+        {
+            if (this.expImportStatus == ExpImportStatus.None)
+            {
+                EditorGUILayout.BeginHorizontal();
+                {
+                    if (GUILayout.Button("导入数据"))
+                    {
+                        this.expImportStatus = ExpImportStatus.Import;
+                    }
+
+                    if (GUILayout.Button("导出数据"))
+                    {
+                        this.expImportStatus = ExpImportStatus.Export;
+                    }
+                }
+                EditorGUILayout.EndHorizontal();
+            }
+            else
+            {
+                if (this.expImportStatus == ExpImportStatus.Import)
+                {
+                    EditorGUILayout.BeginVertical();
+                    {
+                        EditorGUILayout.BeginHorizontal();
+                        {
+                            GUILayout.Label("导入地型：");
+                            this.importType = EditorGUILayout.Popup(this.importType, new string[] { "当前地块", "所有地块" });
+                        }
+                        EditorGUILayout.EndHorizontal();
+                        if(this.m_CurrentHeightMapIdx >= 0)
+                        {
+                            if(this.m_lockedLyaers[this.m_CurrentHeightMapIdx])
+                            {
+                                EditorGUILayout.HelpBox("导入数据将覆盖当前选中图层，当前图层正处于锁定状态", MessageType.Warning);
+                            }
+                            else
+                            {
+                                EditorGUILayout.HelpBox("导入数据将覆盖当前选中图层", MessageType.Info);
+                            }
+                        }
+                        else
+                        {
+                            EditorGUILayout.HelpBox("导入数据将覆盖基础图层", MessageType.Warning);
+                        }
+                        
+                    }
+                    EditorGUILayout.EndVertical();
+
+                    if (GUILayout.Button("关闭导入"))
+                    {
+                        this.expImportStatus = ExpImportStatus.None;
+                    }
+                }
+                else if (this.expImportStatus == ExpImportStatus.Export)
+                {
+                    EditorGUILayout.BeginVertical();
+                    {
+                        EditorGUILayout.BeginHorizontal();
+                        {
+                            GUILayout.Label("导出图层：");
+                            this.exportLayersType = EditorGUILayout.Popup(this.exportLayersType, new string[] { "当前图层", "可见图层合并导出", "所有图层合并导出" });
+                        }
+                        EditorGUILayout.EndHorizontal();
+
+                        EditorGUILayout.BeginHorizontal();
+                        {
+                            GUILayout.Label("导出地型：");
+                            this.exportTerrainsType = EditorGUILayout.Popup(this.exportTerrainsType, new string[] { "当前地块", "所有地块" });
+                        }
+                        EditorGUILayout.EndHorizontal();
+                    }
+                    EditorGUILayout.EndVertical();
+
+                    if (GUILayout.Button("关闭导出"))
+                    {
+                        this.expImportStatus = ExpImportStatus.None;
+                    }
+                }
+                
+            }
         }
 
         private void InitHeightMapTitles()
