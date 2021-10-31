@@ -10,11 +10,12 @@ namespace SeasunTerrain
     public static class TerrainManager
     {
         public static List<Terrain> AllTerrain { get; private set; } = new List<Terrain>();
-      
+
         public static int HeightMapNumber { get; private set; }
         public static int CurrentHeightMapIdx { get; set; }
         public static bool OnlyLoadSelectedLayer { get; set; }
         public static bool[] SelectedLayer { get; set; }
+        public static bool IsBaseLayerEnable { get; set; }
 
         public static void InitAllTerrain(int heightMapNumber, int curEditorIdx)
         {
@@ -25,9 +26,9 @@ namespace SeasunTerrain
             TerrainManager.AllTerrain.Clear();
             TerrainManager.AllTerrain.AddRange(allTerrains);
 
-            for(int i = 0; i < TerrainManager.AllTerrain.Count; ++i)
+            for (int i = 0; i < TerrainManager.AllTerrain.Count; ++i)
             {
-                if(!TerrainManager.AllTerrain[i].gameObject.GetComponent<TerrainExpand>())
+                if (!TerrainManager.AllTerrain[i].gameObject.GetComponent<TerrainExpand>())
                 {
                     TerrainManager.AllTerrain[i].gameObject.AddComponent<TerrainExpand>();
                 }
@@ -36,7 +37,7 @@ namespace SeasunTerrain
 
         public static void AddTerrain(Terrain t)
         {
-            if(!TerrainManager.AllTerrain.Contains(t))
+            if (!TerrainManager.AllTerrain.Contains(t))
             {
                 TerrainManager.AllTerrain.Add(t);
             }
@@ -44,7 +45,7 @@ namespace SeasunTerrain
 
         public static RenderTexture GetHeightMapByIdx(Terrain t, int layerIdx)
         {
-            for(int i = 0; i < TerrainManager.AllTerrain.Count; ++i)
+            for (int i = 0; i < TerrainManager.AllTerrain.Count; ++i)
             {
                 if (TerrainManager.AllTerrain[i] == t)
                 {
@@ -63,7 +64,7 @@ namespace SeasunTerrain
         {
             if (!TerrainManager.defaultHeightMap || TerrainManager.defaultHeightMap.width != t.terrainData.heightmapTexture.width || TerrainManager.defaultHeightMap.height != t.terrainData.heightmapTexture.height)
             {
-                if(TerrainManager.defaultHeightMap)
+                if (TerrainManager.defaultHeightMap)
                 {
                     RenderTexture.ReleaseTemporary(TerrainManager.defaultHeightMap);
                 }
@@ -77,7 +78,7 @@ namespace SeasunTerrain
         private static Material heightSubtractionMat = null;
         public static Material GetHeightSubtractionMat()
         {
-            if(!TerrainManager.heightSubtractionMat)
+            if (!TerrainManager.heightSubtractionMat)
             {
                 TerrainManager.heightSubtractionMat = new Material(Shader.Find("Hidden/TerrainEngine/HeightSubtraction"));
             }
@@ -88,7 +89,7 @@ namespace SeasunTerrain
         private static Material paintHeightExtMat = null;
         public static Material GetPaintHeightExtMat()
         {
-            if(!TerrainManager.paintHeightExtMat)
+            if (!TerrainManager.paintHeightExtMat)
             {
                 TerrainManager.paintHeightExtMat = new Material(Shader.Find("Hidden/TerrainEngine/PaintHeightExt"));
             }

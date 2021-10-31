@@ -315,7 +315,7 @@ namespace SeasunTerrain
             {
                 for (int x = 0; x < this.baseHeightMap.width; ++x)
                 {
-                    float addHeight = this.baseHeightMap.GetPixel(x, y).r;
+                    float addHeight = TerrainManager.IsBaseLayerEnable ? this.baseHeightMap.GetPixel(x, y).r : 0;
 
                     for (int i = 0; i < this.heightMapList.Count; ++i)
                     {

@@ -17,7 +17,9 @@ namespace SeasunTerrain
         [SerializeField] int m_HeightMapNumber = 1;
         [SerializeField] int m_CurrentHeightMapIdx = 0;
         [SerializeField] bool[] m_selectedLyaers = new bool[] { true };
+        [SerializeField] bool[] m_lockedLyaers = new bool[] { false };
         [SerializeField] string[] m_heightMapTitles;
+        [SerializeField] bool m_IsBaseLayerEnable = true;
 
 
         class Styles
@@ -25,7 +27,7 @@ namespace SeasunTerrain
             public readonly GUIContent description = EditorGUIUtility.TrTextContent("地型高度编辑器，按左键编辑高度，按Shift + 左键擦除高度。");
             public readonly GUIContent height = EditorGUIUtility.TrTextContent("画笔高度", "可以直接设置画笔高度，也可以在地形上按住shift和鼠标滚轮进行调整");
             public readonly GUIContent heightValueScale = EditorGUIUtility.TrTextContent("高度值缩放");
-            public readonly GUIContent save = EditorGUIUtility.TrTextContent("保存", "保存所修改");            
+            public readonly GUIContent save = EditorGUIUtility.TrTextContent("保存", "保存所修改");
         }
 
         [Shortcut("Terrain/Custom Layers", typeof(TerrainToolShortcutContext), KeyCode.F10)]
@@ -61,6 +63,7 @@ namespace SeasunTerrain
         public override void OnEnable()
         {
             TerrainManager.InitAllTerrain(this.m_HeightMapNumber, this.m_CurrentHeightMapIdx);
+            TerrainManager.IsBaseLayerEnable = this.m_IsBaseLayerEnable;
         }
 
         private Material ApplyBrushInternal(PaintContext paintContext, float brushStrength, Texture brushTexture, BrushTransform brushXform, Terrain terrain)
@@ -108,6 +111,16 @@ namespace SeasunTerrain
 
         public override bool OnPaint(Terrain terrain, IOnPaint editContext)
         {
+            if (this.m_CurrentHeightMapIdx < 0)
+            {
+                return false;
+            }
+
+            if (this.m_lockedLyaers[this.m_CurrentHeightMapIdx] || this.m_CurrentHeightMapIdx == -1)
+            {
+                return false;
+            }
+
             BrushTransform brushXform = TerrainPaintUtility.CalculateBrushTransform(terrain, editContext.uv, editContext.brushSize, 0.0f);
 
             PaintContextExp paintContextTmp = TerrainManager.BeginPaintHeightMapLyaer(terrain, brushXform.GetBrushXYBounds(), this.m_CurrentHeightMapIdx);
@@ -143,13 +156,17 @@ namespace SeasunTerrain
             Event evt = Event.current;
             if (evt.control && (evt.type == EventType.ScrollWheel))
             {
-
                 evt.Use();
                 editContext.Repaint();
             }
 
             if (evt.type != EventType.Repaint)
                 return;
+
+            if (this.m_CurrentHeightMapIdx < 0 || this.m_lockedLyaers[this.m_CurrentHeightMapIdx])
+            {
+                return;
+            }
 
             if (editContext.hitValidTerrain)
             {
@@ -239,31 +256,69 @@ namespace SeasunTerrain
                 this.InitHeightMapTitles();
             }
 
-            if (this.m_selectedLyaers.Length != this.m_HeightMapNumber)
+            if (this.m_selectedLyaers.Length != this.m_HeightMapNumber || this.m_lockedLyaers.Length != this.m_HeightMapNumber)
             {
                 this.InitLayerNumberString();
             }
 
             EditorGUILayout.BeginVertical("sv_iconselector_back");
             {
+                if (this.m_CurrentHeightMapIdx < 0)
+                {
+                    GUILayout.Space(5);
+                }
+
+                EditorGUILayout.BeginHorizontal(this.m_CurrentHeightMapIdx < 0 ? "LightmapEditorSelectedHighlight" : "SelectionRect");
+                {
+                    GUILayout.Space(5);
+                    EditorGUI.BeginChangeCheck();
+                    {
+                        if (GUILayout.Button("Base Layer", "BoldLabel", GUILayout.Width(150)))
+                        {
+                            this.m_CurrentHeightMapIdx = -1;
+                        }
+                    }
+
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        TerrainManager.CurrentHeightMapIdx = this.m_CurrentHeightMapIdx;
+                        this.titleEditorIdx = -1;
+                    }
+
+                    EditorGUI.BeginChangeCheck();
+                    {
+                        this.m_IsBaseLayerEnable = GUILayout.Toggle(this.m_IsBaseLayerEnable, "", "OL ToggleWhite", GUILayout.Width(20));
+                    }
+
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        TerrainManager.SelectedLayer = this.m_selectedLyaers;
+                        TerrainManager.IsBaseLayerEnable = this.m_IsBaseLayerEnable;
+                        this.ReloadSelectedLayers();
+                        Save(true);
+                    }
+
+                    GUILayout.Label(EditorGUIUtility.IconContent("IN LockButton on"));
+
+                    GUILayout.Space(5);
+                }
+                EditorGUILayout.EndHorizontal();
+
+                if (this.m_CurrentHeightMapIdx < 0)
+                {
+                    GUILayout.Space(5);
+                }
+
                 for (int i = 0; i < this.m_HeightMapNumber; ++i)
                 {
+                    if (i == this.m_CurrentHeightMapIdx)
+                    {
+                        GUILayout.Space(5);
+                    }
+
                     EditorGUILayout.BeginHorizontal(i == this.m_CurrentHeightMapIdx ? "LightmapEditorSelectedHighlight" : "SelectionRect");
                     {
-                        EditorGUI.BeginChangeCheck();
-                        {
-                            if (GUILayout.Toggle(this.m_CurrentHeightMapIdx == i, "", "Radio", GUILayout.Width(20)))
-                            {
-                                this.m_CurrentHeightMapIdx = i;
-                            }
-                        }
-                        if (EditorGUI.EndChangeCheck())
-                        {
-                            TerrainManager.CurrentHeightMapIdx = this.m_CurrentHeightMapIdx;
-                            this.titleEditorIdx = -1;
-                        }
-
-                        GUILayout.Space(2);
+                        GUILayout.Space(5);
                         if (this.titleEditorIdx == i)
                         {
                             EditorGUILayout.BeginHorizontal();
@@ -272,12 +327,13 @@ namespace SeasunTerrain
                                 {
                                     this.m_heightMapTitles[i] = GUILayout.TextField(this.m_heightMapTitles[i], "ToolbarTextField");
                                 }
+
                                 if (EditorGUI.EndChangeCheck())
                                 {
                                     Save(true);
                                 }
 
-                                if (GUILayout.Button("", "AC RightArrow", GUILayout.Width(20)))
+                                if (GUILayout.Button(EditorGUIUtility.IconContent("AvatarInspector/DotSelection"), GUILayout.Width(25)))
                                 {
                                     this.titleEditorIdx = -1;
                                 }
@@ -286,11 +342,48 @@ namespace SeasunTerrain
                         }
                         else
                         {
-                            if (GUILayout.Button(this.m_heightMapTitles[i], "BoldLabel"))
+                            EditorGUI.BeginChangeCheck();
+                            {
+                                if (GUILayout.Button(this.m_heightMapTitles[i], "BoldLabel"))
+                                {
+                                    this.m_CurrentHeightMapIdx = i;
+                                }
+                            }
+                            if (EditorGUI.EndChangeCheck())
+                            {
+                                TerrainManager.CurrentHeightMapIdx = this.m_CurrentHeightMapIdx;
+                                this.titleEditorIdx = -1;
+                            }
+
+                            if (GUILayout.Button(EditorGUIUtility.IconContent("editicon.sml"), GUILayout.Width(25)))
                             {
                                 this.titleEditorIdx = i;
                             }
                         }
+
+                        EditorGUI.BeginChangeCheck();
+                        {
+                            if (this.m_lockedLyaers[i])
+                            {
+                                if (GUILayout.Button(EditorGUIUtility.IconContent("IN LockButton on"), GUILayout.Width(25)))
+                                {
+                                    this.m_lockedLyaers[i] = false;
+                                }
+                            }
+                            else
+                            {
+                                if (GUILayout.Button(EditorGUIUtility.IconContent("IN LockButton"), GUILayout.Width(25)))
+                                {
+                                    this.m_lockedLyaers[i] = true;
+                                }
+                            }
+                        }
+
+                        if (EditorGUI.EndChangeCheck())
+                        {
+                            Save(true);
+                        }
+
 
                         EditorGUI.BeginChangeCheck();
                         {
@@ -307,7 +400,7 @@ namespace SeasunTerrain
 
                         EditorGUI.BeginChangeCheck();
                         {
-                            if (GUILayout.Button("", "OL Minus", GUILayout.Width(20)))
+                            if (GUILayout.Button(EditorGUIUtility.IconContent("TreeEditor.Trash"), GUILayout.Width(25)))
                             {
                                 this.titleEditorIdx = -1;
                                 this.RemoveHeightLayer(i);
@@ -319,7 +412,13 @@ namespace SeasunTerrain
                         }
                     }
 
+                    GUILayout.Space(5);
                     EditorGUILayout.EndHorizontal();
+
+                    if (i == this.m_CurrentHeightMapIdx)
+                    {
+                        GUILayout.Space(5);
+                    }
                 }
             }
 
@@ -375,13 +474,21 @@ namespace SeasunTerrain
             }
 
             TerrainManager.SelectedLayer = this.m_selectedLyaers;
+
+            tmp = this.m_lockedLyaers;
+            this.m_lockedLyaers = new bool[this.m_HeightMapNumber];
+
+            for (int i = 0; i < this.m_HeightMapNumber; ++i)
+            {
+                this.m_lockedLyaers[i] = tmp.Length > i ? tmp[i] : true;
+            }
         }
 
         private void ReloadSelectedLayers()
         {
             if (TerrainManager.AllTerrain.Count == 0)
             {
-                TerrainManager.InitAllTerrain(this.m_CurrentHeightMapIdx, this.m_CurrentHeightMapIdx);
+                TerrainManager.InitAllTerrain(this.m_HeightMapNumber, this.m_CurrentHeightMapIdx);
             }
 
             for (int i = 0; i < TerrainManager.AllTerrain.Count; ++i)
@@ -401,6 +508,12 @@ namespace SeasunTerrain
 
         private void RemoveHeightLayer(int idx)
         {
+            if (this.m_lockedLyaers[idx])
+            {
+                EditorUtility.DisplayDialog("错误", "无法删除已锁定的图层", "确定");
+                return;
+            }
+
             if (EditorUtility.DisplayDialog("确认删除", $"真的删除{ this.m_heightMapTitles[idx]}吗？", "删除", "不删"))
             {
                 if (this.m_HeightMapNumber <= 0)

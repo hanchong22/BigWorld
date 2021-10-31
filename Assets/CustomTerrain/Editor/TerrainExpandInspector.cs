@@ -13,7 +13,7 @@ namespace SeasunTerrain
     {
         class Styles
         {
-            public readonly GUIContent currentHeitMapTitle = EditorGUIUtility.TrTextContent("当前图层", "当前正在编辑的高度图");          
+            public readonly GUIContent currentHeitMapTitle = EditorGUIUtility.TrTextContent("当前图层", "当前正在编辑的高度图");
         }
 
         private static Styles m_styles;
@@ -25,12 +25,12 @@ namespace SeasunTerrain
             }
             return m_styles;
         }
-       
+
 
         private TerrainExpand script;
 
         public void OnEnable()
-        {          
+        {
             this.script = this.target as TerrainExpand;
         }
 
@@ -40,11 +40,18 @@ namespace SeasunTerrain
             base.serializedObject.Update();
 
             GUILayout.Space(150);
-            if (this.script && this.script.rtHeightMapList.Count >= TerrainManager.HeightMapNumber)
+            if (TerrainManager.CurrentHeightMapIdx >= 0)
             {
-                GUI.DrawTexture(new Rect(5, 5, 100, 100), this.script.rtHeightMapList[TerrainManager.CurrentHeightMapIdx]);
+                if (this.script && this.script.rtHeightMapList.Count >= TerrainManager.HeightMapNumber)
+                {
+                    GUI.DrawTexture(new Rect(5, 5, 100, 100), this.script.rtHeightMapList[TerrainManager.CurrentHeightMapIdx]);
+                }
             }
-            
+            else
+            {
+                GUI.DrawTexture(new Rect(5, 5, 100, 100), this.script.BaseHeightMap);
+            }
+
 
             base.serializedObject.ApplyModifiedProperties();
         }
