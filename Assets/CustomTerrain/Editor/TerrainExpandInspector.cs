@@ -26,12 +26,17 @@ namespace SeasunTerrain
             return m_styles;
         }
 
-
         private TerrainExpand script;
 
         public void OnEnable()
         {
             this.script = this.target as TerrainExpand;
+            TerrainManager.CurrentSelectedTerrain = this.script.gameObject.GetComponent<Terrain>();           
+        }
+
+        public void OnDestroy()
+        {
+            TerrainManager.CurrentSelectedTerrain = null;            
         }
 
         public override void OnInspectorGUI()

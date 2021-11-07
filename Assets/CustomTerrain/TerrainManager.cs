@@ -9,6 +9,7 @@ namespace SeasunTerrain
 {
     public static class TerrainManager
     {
+        public static Terrain CurrentSelectedTerrain { get; set; }
         public static List<Terrain> AllTerrain { get; private set; } = new List<Terrain>();
 
         public static int HeightMapNumber { get; private set; }
@@ -50,6 +51,12 @@ namespace SeasunTerrain
                 if (TerrainManager.AllTerrain[i] == t)
                 {
                     TerrainExpand te = TerrainManager.AllTerrain[i].gameObject.GetComponent<TerrainExpand>();
+                    if(te.rtHeightMapList == null || te.rtHeightMapList.Count <= layerIdx)
+                    {
+                        Debug.LogError($"{te.gameObject} : InitHeightMaps");
+                        te.InitHeightMaps();
+                    }
+
                     return te.rtHeightMapList[layerIdx];
                 }
             }

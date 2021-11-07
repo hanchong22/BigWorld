@@ -21,6 +21,9 @@ namespace SeasunTerrain
         [SerializeField] string[] m_heightMapTitles;
         [SerializeField] bool m_IsBaseLayerEnable = true;
 
+        bool isCreateTerrainMode = false;
+        private static TileTerrainManagerTool m_CreateTool = null;
+
         enum ExpImportStatus
         {
             None = 0,
@@ -73,6 +76,10 @@ namespace SeasunTerrain
         {
             TerrainManager.InitAllTerrain(this.m_HeightMapNumber, this.m_CurrentHeightMapIdx);
             TerrainManager.IsBaseLayerEnable = this.m_IsBaseLayerEnable;
+            if (CustomLayerHeightPaint.m_CreateTool == null)
+            {
+                CustomLayerHeightPaint.m_CreateTool = TileTerrainManagerTool.instance;
+            }
         }
 
         private Material ApplyBrushInternal(PaintContext paintContext, float brushStrength, Texture brushTexture, BrushTransform brushXform, Terrain terrain)
@@ -162,6 +169,12 @@ namespace SeasunTerrain
 
         public override void OnSceneGUI(Terrain terrain, IOnSceneGUI editContext)
         {
+            if (this.isCreateTerrainMode && m_CreateTool != null)
+            {
+                m_CreateTool.OnSceneGUI(terrain, editContext);
+                return;
+            }
+
             Event evt = Event.current;
             if (evt.control && (evt.type == EventType.ScrollWheel))
             {
@@ -215,6 +228,26 @@ namespace SeasunTerrain
 
         public override void OnInspectorGUI(Terrain terrain, IOnInspectorGUI editContext)
         {
+            if (this.isCreateTerrainMode && m_CreateTool != null)
+            {
+                GUILayout.BeginVertical(EditorStyles.helpBox);
+
+                GUILayout.Label(m_CreateTool.GetName());
+                if (!string.IsNullOrEmpty(m_CreateTool.GetDesc()))
+                    GUILayout.Label(m_CreateTool.GetDesc(), EditorStyles.wordWrappedMiniLabel);
+
+                GUILayout.EndVertical();
+
+                m_CreateTool.OnInspectorGUI(terrain, editContext);
+            }
+
+            if (GUILayout.Button(this.isCreateTerrainMode ? "关闭创建" : "创建邻接地型"))
+            {
+                this.isCreateTerrainMode = !this.isCreateTerrainMode;
+            }
+
+            GUILayout.Space(3);
+
             Styles styles = GetStyles();
 
             EditorGUI.BeginChangeCheck();
@@ -259,6 +292,7 @@ namespace SeasunTerrain
             editContext.ShowBrushesGUI(5, BrushGUIEditFlags.All, textureRez);
             base.OnInspectorGUI(terrain, editContext);
         }
+
 
         #region 图层
 
@@ -480,15 +514,15 @@ namespace SeasunTerrain
                 {
                     EditorGUILayout.BeginVertical();
                     {
-                        EditorGUILayout.BeginHorizontal();
+                        //EditorGUILayout.BeginHorizontal();
+                        //{
+                        //    GUILayout.Label("导入地型：");
+                        //    this.importType = EditorGUILayout.Popup(this.importType, new string[] { "当前地块", "所有地块" });
+                        //}
+                        //EditorGUILayout.EndHorizontal();
+                        if (this.m_CurrentHeightMapIdx >= 0)
                         {
-                            GUILayout.Label("导入地型：");
-                            this.importType = EditorGUILayout.Popup(this.importType, new string[] { "当前地块", "所有地块" });
-                        }
-                        EditorGUILayout.EndHorizontal();
-                        if(this.m_CurrentHeightMapIdx >= 0)
-                        {
-                            if(this.m_lockedLyaers[this.m_CurrentHeightMapIdx])
+                            if (this.m_lockedLyaers[this.m_CurrentHeightMapIdx])
                             {
                                 EditorGUILayout.HelpBox("导入数据将覆盖当前选中图层，当前图层正处于锁定状态", MessageType.Warning);
                             }
@@ -501,7 +535,30 @@ namespace SeasunTerrain
                         {
                             EditorGUILayout.HelpBox("导入数据将覆盖基础图层", MessageType.Warning);
                         }
-                        
+
+                        if (GUILayout.Button("导入文件..."))
+                        {
+                            string importFilePath = EditorUtility.OpenFilePanelWithFilters("选择地型高度图", System.IO.Directory.GetCurrentDirectory(), new string[] { "Image files", "png,jpg,jpeg,bmp", "Data files", "data,asset,byte", "All files", "*" });
+                            if (!string.IsNullOrEmpty(importFilePath))
+                            {
+                                string AssetPath = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "Assets").Replace("\\", "/");
+                                Texture2D loadedTex = null;
+                                if (importFilePath.StartsWith(AssetPath))
+                                {
+                                    loadedTex = AssetDatabase.LoadAssetAtPath<Texture2D>(importFilePath.Replace(AssetPath, ""));
+                                }
+                                else
+                                {
+                                    byte[] data = System.IO.File.ReadAllBytes(importFilePath);
+                                    loadedTex.LoadImage(data);
+                                }
+
+                                if (loadedTex && TerrainManager.CurrentSelectedTerrain)
+                                {
+                                    TerrainManager.CurrentSelectedTerrain.GetComponent<TerrainExpand>()?.ReimportHeightmap(this.m_CurrentHeightMapIdx, loadedTex);
+                                }
+                            }
+                        }
                     }
                     EditorGUILayout.EndVertical();
 
@@ -527,6 +584,71 @@ namespace SeasunTerrain
                             this.exportTerrainsType = EditorGUILayout.Popup(this.exportTerrainsType, new string[] { "当前地块", "所有地块" });
                         }
                         EditorGUILayout.EndHorizontal();
+
+                        if (GUILayout.Button("导出文件..."))
+                        {
+                            string exportPath = EditorUtility.OpenFolderPanel("选择目标文件夹", System.IO.Directory.GetCurrentDirectory(), "打开文件夹");
+
+                            if (!string.IsNullOrEmpty(exportPath))
+                            {
+                                List<int> expLayers = new List<int>();
+
+                                switch (this.exportLayersType)
+                                {
+                                    case 0:
+                                        expLayers.Add(this.m_CurrentHeightMapIdx);
+                                        break;
+                                    case 1:
+                                        if (this.m_IsBaseLayerEnable)
+                                        {
+                                            expLayers.Add(-1);
+                                        }
+                                        for (int n = 0; n < this.m_HeightMapNumber; ++n)
+                                        {
+                                            if (this.m_selectedLyaers[n])
+                                            {
+                                                expLayers.Add(n);
+                                            }
+                                        }
+                                        break;
+                                    case 2:
+                                        expLayers.Add(-1);
+                                        for (int n = 0; n < this.m_HeightMapNumber; ++n)
+                                        {
+                                            expLayers.Add(n);
+                                        }
+                                        break;
+                                }
+
+                                if (this.exportTerrainsType == 0)
+                                {
+                                    if (TerrainManager.CurrentSelectedTerrain)
+                                    {
+                                        string exportFile = System.IO.Path.Combine(exportPath, $"{TerrainManager.CurrentSelectedTerrain.name}_heightMap.exr");
+                                        var expTexture = TerrainManager.CurrentSelectedTerrain.GetComponent<TerrainExpand>()?.GetMergedTexture(expLayers);
+                                        AssetDatabase.CreateAsset(expTexture,$"Assets/{TerrainManager.CurrentSelectedTerrain.name}_heightMap.asset");
+                                        this.WriteImageDataToFile(expTexture, exportFile);
+                                    }
+                                    else
+                                    {
+                                        Debug.LogError("当前没有选择地块");
+                                    }
+                                }
+                                else
+                                {
+                                    for (int n = 0; n < TerrainManager.AllTerrain.Count; ++n)
+                                    {
+                                        var t = TerrainManager.AllTerrain[n];
+                                        string exportFile = System.IO.Path.Combine(exportPath, $"{t.name}_heightMap.exr");
+                                        var expTexture = t.GetComponent<TerrainExpand>()?.GetMergedTexture(expLayers);
+                                        AssetDatabase.CreateAsset(expTexture, $"Assets/{t.name}_heightMap.asset");
+                                        this.WriteImageDataToFile(expTexture, exportFile);
+                                    }
+                                }
+
+                                AssetDatabase.SaveAssets();
+                            }
+                        }
                     }
                     EditorGUILayout.EndVertical();
 
@@ -535,8 +657,16 @@ namespace SeasunTerrain
                         this.expImportStatus = ExpImportStatus.None;
                     }
                 }
-                
+
             }
+        }
+
+        private void WriteImageDataToFile(Texture2D tex, string path)
+        {
+            byte[] data = tex.EncodeToEXR(Texture2D.EXRFlags.OutputAsFloat);
+            var fl = System.IO.File.OpenWrite(path);
+            fl.Write(data, 0, data.Length);
+            fl.Close();
         }
 
         private void InitHeightMapTitles()

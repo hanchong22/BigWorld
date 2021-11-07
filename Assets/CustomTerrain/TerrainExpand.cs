@@ -5,7 +5,7 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEditor;
 using UnityEditor.Experimental.TerrainAPI;
-using UnityEngine.Experimental.TerrainAPI;
+
 using System.IO;
 
 namespace SeasunTerrain
@@ -203,7 +203,7 @@ namespace SeasunTerrain
         RectInt dstPixels;
         RectInt sourcePixels;
 
-        public void OnPaint(int heightMapIdx, PaintContext editContext, int tileIndex, Material brushMat)
+        public void OnPaint(int heightMapIdx, UnityEngine.Experimental.TerrainAPI.PaintContext editContext, int tileIndex, Material brushMat)
         {
             Material blitMaterial = TerrainManager.GetHeightSubtractionMat();
 
@@ -274,7 +274,7 @@ namespace SeasunTerrain
 
         public void RemoveLayer(int idx)
         {
-            if(idx >= this.heightMapList.Count)
+            if (idx >= this.heightMapList.Count)
             {
                 return;
             }
@@ -288,8 +288,8 @@ namespace SeasunTerrain
             GameObject.DestroyImmediate(waitToDelTex);
             RenderTexture.ReleaseTemporary(waitToDelRt);
 
-            
-            for(int i = idx + 1; i < this.heightMapList.Count; ++i)
+
+            for (int i = idx + 1; i < this.heightMapList.Count; ++i)
             {
                 string tmpPath = AssetDatabase.GetAssetPath(this.heightMapList[i]);
                 AssetDatabase.RenameAsset(tmpPath, path);
@@ -298,7 +298,7 @@ namespace SeasunTerrain
             }
 
             this.heightMapList.RemoveAt(idx);
-            this.rtHeightMapList.RemoveAt(idx);            
+            this.rtHeightMapList.RemoveAt(idx);
         }
 
         public void ReLoadLayer(float scale)
@@ -335,6 +335,95 @@ namespace SeasunTerrain
             }
 
             terrainData.SetHeights(0, 0, heights);
+        }
+
+        public bool ReimportHeightmap(int heighMapID, Texture2D newTex)
+        {
+            if (newTex.width != this.terrainData.heightmapTexture.width || newTex.height != this.terrainData.heightmapTexture.height)
+            {
+                Debug.LogError($"导入的高度图尺寸与地型不符，必须使用{ this.terrainData.heightmapTexture.width} * { this.terrainData.heightmapTexture.height}的高度图");
+                return false;
+            }
+
+            if (heighMapID < 0)
+            {
+                this.baseHeightMap.SetPixels(newTex.GetPixels());
+                this.baseHeightMap.Apply();
+
+                AssetDatabase.SaveAssets();
+            }
+            else
+            {
+                if (this.heightMapList.Count > heighMapID)
+                {
+                    if (!this.heightMapList[heighMapID])
+                    {
+                        this.InitHeightMaps();
+                    }
+
+                    this.heightMapList[heighMapID].SetPixels(newTex.GetPixels());
+                    this.heightMapList[heighMapID].Apply();
+
+                    Graphics.Blit(newTex, this.rtHeightMapList[heighMapID]);
+
+                    AssetDatabase.SaveAssets();
+                }
+                else
+                {
+                    Debug.LogError($"{heighMapID} 不存在，地型是否没有初始化？");
+                }
+            }
+
+            return true;
+        }
+
+        public Texture2D GetMergedTexture(List<int> ids)
+        {
+            Texture2D tex = new Texture2D(this.baseHeightMap.width, this.baseHeightMap.height, TextureFormat.RGHalf, false);
+
+            if (ids.Contains(-1))
+            {
+                for (int y = 0; y < tex.height; ++y)
+                {
+                    for (int x = 0; x < tex.width; ++x)
+                    {
+                        Vector4 color = tex.GetPixel(x, y);
+
+                        int startIdx = 0;
+                        if (ids[0] == -1)
+                        {
+                            startIdx = 1;
+                            Vector4 scolor = this.baseHeightMap.GetPixel(x, y);
+                            color = new Vector4(scolor.x, 0, 0, 0);
+                        }
+
+                        for (int i = startIdx; i < ids.Count; ++i)
+                        {
+                            int id = ids[i];
+                            if (id < 0)
+                            {
+                                continue;
+                            }
+
+                            if (this.heightMapList.Count < id || !this.heightMapList[id])
+                            {
+                                Debug.LogError($"layer {id} is not exists in {this.name}");
+                                this.InitHeightMaps();
+                            }
+
+                            Vector4 scolor = this.heightMapList[id].GetPixel(x, y);
+
+                            color = new Vector4(Mathf.Clamp01(color.x + scolor.x + scolor.y), 0, 0, 0);
+                        }
+
+                        tex.SetPixel(x, y, color);
+                    }
+                }
+            }
+
+            tex.Apply();
+
+            return tex;
         }
 
         static void CopyRtToTexture2D(RenderTexture rt, Texture2D tex)

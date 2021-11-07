@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace UnityEngine.Experimental.TerrainAPI
 {
-    public class PaintContextExp : PaintContext
+    public class PaintContextExp : UnityEngine.Experimental.TerrainAPI.PaintContext
     {
         public PaintContextExp(Terrain terrain, RectInt pixelRect, int targetTextureWidth, int targetTextureHeight, bool texelPadding = true) : base(terrain, pixelRect, targetTextureWidth, targetTextureHeight, texelPadding)
         {
@@ -23,7 +23,7 @@ namespace UnityEngine.Experimental.TerrainAPI
 
         public void GatherInitHeightmap(int layerIdx)
         {
-            var blitMaterial = TerrainPaintUtility.GetHeightBlitMaterial();
+            var blitMaterial = UnityEngine.Experimental.TerrainAPI.TerrainPaintUtility.GetHeightBlitMaterial();
             blitMaterial.SetFloat("_Height_Offset", 0.0f);
             blitMaterial.SetFloat("_Height_Scale", 1.0f);
 
