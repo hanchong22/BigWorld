@@ -53,7 +53,7 @@ namespace SeasunTerrain
                     TerrainExpand te = TerrainManager.AllTerrain[i].gameObject.GetComponent<TerrainExpand>();
                     if(te.rtHeightMapList == null || te.rtHeightMapList.Count <= layerIdx)
                     {
-                        Debug.LogError($"{te.gameObject} : InitHeightMaps");
+                       // Debug.LogError($"{te.gameObject} : InitHeightMaps");
                         te.InitHeightMaps();
                     }
 
