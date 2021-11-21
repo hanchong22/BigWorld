@@ -16,7 +16,6 @@ namespace SeasunTerrain
     [ExecuteInEditMode]
     public class TerrainExpand : MonoBehaviour
     {
-
 #if UNITY_EDITOR
 
         private List<Texture2D> heightMapList;
@@ -455,6 +454,7 @@ namespace SeasunTerrain
 
             RenderTexture.active = oldRT;
         }
+
 #endif
     }
 }
