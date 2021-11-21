@@ -4,6 +4,7 @@ using UnityEditor.ShortcutManagement;
 using UnityEditor;
 using UnityEditor.Experimental.TerrainAPI;
 using System.Collections.Generic;
+using System.IO;
 
 namespace SeasunTerrain
 {
@@ -301,6 +302,7 @@ namespace SeasunTerrain
         int importType = 0; //=0 current Terraon; =1 all Terrains
         int exportLayersType = 0;
         int exportTerrainsType = 0;
+        int exportFileType = 0; //0: image file, 1 data file
 
         private void DrawLayers()
         {
@@ -548,34 +550,59 @@ namespace SeasunTerrain
                         if (GUILayout.Button("导入文件..."))
                         {
                             string waitDeleteFile = "";
-                            string importFilePath = EditorUtility.OpenFilePanelWithFilters("选择地型高度图", System.IO.Directory.GetCurrentDirectory(), new string[] { "Image files", "png,jpg,jpeg,bmp,exr", "Data files", "data,asset,byte", "All files", "*" });
+                            string importFilePath = EditorUtility.OpenFilePanelWithFilters("选择地型高度图", System.IO.Directory.GetCurrentDirectory(), new string[] { "高度纹理", "png,jpg,jpeg,bmp,exr", "地型数据", "data,asset,byte", "All files", "*" });
                             if (!string.IsNullOrEmpty(importFilePath))
                             {
-                                string AssetPath = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "Assets/").Replace("\\", "/");
                                 Texture2D loadedTex = null;
-                                if (importFilePath.StartsWith(AssetPath))
+
+                                bool isDataFile = this.IsDataFile(importFilePath);
+                                if (!isDataFile)
                                 {
-                                    loadedTex = AssetDatabase.LoadAssetAtPath<Texture2D>(System.IO.Path.Combine("Assets", importFilePath.Replace(AssetPath, "")));
+                                    string AssetPath = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "Assets/").Replace("\\", "/");
+                                    if (importFilePath.StartsWith(AssetPath))
+                                    {
+                                        loadedTex = AssetDatabase.LoadAssetAtPath<Texture2D>(System.IO.Path.Combine("Assets", importFilePath.Replace(AssetPath, "")));
+                                    }
+                                    else
+                                    {
+                                        string tmpFileName = GUID.Generate().ToString() + System.IO.Path.GetExtension(importFilePath);
+                                        System.IO.File.Copy(importFilePath, System.IO.Path.Combine(AssetPath, tmpFileName));
+                                        AssetDatabase.Refresh();
+                                        loadedTex = AssetDatabase.LoadAssetAtPath<Texture2D>($"Assets/{tmpFileName}");
+                                        waitDeleteFile = AssetDatabase.GetAssetPath(loadedTex);
+                                    }
+
+                                    if (loadedTex && TerrainManager.CurrentSelectedTerrain)
+                                    {
+                                        TerrainManager.CurrentSelectedTerrain.GetComponent<TerrainExpand>()?.ReimportHeightmap(this.m_CurrentHeightMapIdx, loadedTex, this.m_HeightScale);
+                                    }
+
+                                    if (!string.IsNullOrEmpty(waitDeleteFile))
+                                    {
+                                        AssetDatabase.DeleteAsset(waitDeleteFile);
+                                        AssetDatabase.Refresh();
+                                    }
                                 }
                                 else
                                 {
-                                    string tmpFileName = GUID.Generate().ToString() + System.IO.Path.GetExtension(importFilePath);
-                                    System.IO.File.Copy(importFilePath, System.IO.Path.Combine(AssetPath, tmpFileName));
-                                    AssetDatabase.Refresh();
-                                    loadedTex = AssetDatabase.LoadAssetAtPath<Texture2D>($"Assets/{tmpFileName}");
-                                    waitDeleteFile = AssetDatabase.GetAssetPath(loadedTex);
+                                    FileStream file = File.Open(importFilePath, FileMode.Open, FileAccess.Read);
+                                    int fileSize = (int)file.Length;
+                                    file.Close();
 
-                                }
+                                    int pixels = fileSize / 2;
+                                    int resolution = Mathf.RoundToInt(Mathf.Sqrt(pixels));
 
-                                if (loadedTex && TerrainManager.CurrentSelectedTerrain)
-                                {
-                                    TerrainManager.CurrentSelectedTerrain.GetComponent<TerrainExpand>()?.ReimportHeightmap(this.m_CurrentHeightMapIdx, loadedTex, this.m_HeightScale);
-                                }
+                                    byte[] data;
+                                    using (BinaryReader br = new BinaryReader(File.Open(importFilePath, FileMode.Open, FileAccess.Read)))
+                                    {
+                                        data = br.ReadBytes(resolution * resolution * 2);
+                                        br.Close();
+                                    }
 
-                                if (!string.IsNullOrEmpty(waitDeleteFile))
-                                {
-                                    AssetDatabase.DeleteAsset(waitDeleteFile);
-                                    AssetDatabase.Refresh();
+                                    if (TerrainManager.CurrentSelectedTerrain)
+                                    {
+                                        TerrainManager.CurrentSelectedTerrain.GetComponent<TerrainExpand>()?.ReimportHeightData(this.m_CurrentHeightMapIdx, data, this.m_HeightScale, resolution);
+                                    }
                                 }
                             }
                         }
@@ -602,6 +629,13 @@ namespace SeasunTerrain
                         {
                             GUILayout.Label("导出地型：");
                             this.exportTerrainsType = EditorGUILayout.Popup(this.exportTerrainsType, new string[] { "当前地块", "所有地块" });
+                        }
+                        EditorGUILayout.EndHorizontal();
+
+                        EditorGUILayout.BeginHorizontal();
+                        {
+                            GUILayout.Label("数据类型：");
+                            this.exportFileType = EditorGUILayout.Popup(this.exportFileType, new string[] { "纹理数据", "地型数据" });
                         }
                         EditorGUILayout.EndHorizontal();
 
@@ -644,7 +678,7 @@ namespace SeasunTerrain
                                 {
                                     if (TerrainManager.CurrentSelectedTerrain)
                                     {
-                                        string exportFile = System.IO.Path.Combine(exportPath, $"{TerrainManager.CurrentSelectedTerrain.name}_heightMap.exr");
+                                        string exportFile = System.IO.Path.Combine(exportPath, $"{TerrainManager.CurrentSelectedTerrain.name}_heightMap.{(this.exportFileType == 0 ? "exr" : "data")}");
                                         var expTexture = TerrainManager.CurrentSelectedTerrain.GetComponent<TerrainExpand>()?.GetMergedTexture(expLayers);
                                         AssetDatabase.CreateAsset(expTexture, $"Assets/{TerrainManager.CurrentSelectedTerrain.name}_heightMap.asset");
                                         this.WriteImageDataToFile(expTexture, exportFile);
@@ -659,7 +693,7 @@ namespace SeasunTerrain
                                     for (int n = 0; n < TerrainManager.AllTerrain.Count; ++n)
                                     {
                                         var t = TerrainManager.AllTerrain[n];
-                                        string exportFile = System.IO.Path.Combine(exportPath, $"{t.name}_heightMap.exr");
+                                        string exportFile = System.IO.Path.Combine(exportPath, $"{t.name}_heightMap.{(this.exportFileType == 0 ? "exr" : "data")}");
                                         var expTexture = t.GetComponent<TerrainExpand>()?.GetMergedTexture(expLayers);
                                         AssetDatabase.CreateAsset(expTexture, $"Assets/{t.name}_heightMap.asset");
                                         this.WriteImageDataToFile(expTexture, exportFile);
@@ -681,26 +715,58 @@ namespace SeasunTerrain
             }
         }
 
+        private bool IsDataFile(string fileName)
+        {
+            string expName = System.IO.Path.GetExtension(fileName).ToLower();
+            return expName.EndsWith("data") || expName.EndsWith("byte");
+        }
+
         private void WriteImageDataToFile(Texture2D tex, string path)
         {
-            Texture2D newTexture = new Texture2D(tex.width, tex.height, TextureFormat.RHalf, false);
-
-            for (int y = 0; y < tex.height; ++y)
+            if (this.exportFileType == 0)
             {
-                for (int x = 0; x < tex.width; ++x)
+                Texture2D newTexture = new Texture2D(tex.width, tex.height, TextureFormat.RHalf, false);
+
+                for (int y = 0; y < tex.height; ++y)
                 {
-                    Vector4 scolor = tex.GetPixel(x, y);
-                   
-                    newTexture.SetPixel(x, y, scolor);
+                    for (int x = 0; x < tex.width; ++x)
+                    {
+                        Vector4 scolor = tex.GetPixel(x, y);
+
+                        newTexture.SetPixel(x, y, scolor);
+                    }
                 }
+
+                newTexture.Apply();
+
+                byte[] data = newTexture.EncodeToEXR(Texture2D.EXRFlags.None);
+                var fl = System.IO.File.OpenWrite(path);
+                fl.Write(data, 0, data.Length);
+                fl.Close();
             }
+            else
+            {
+                byte[] data = new byte[tex.width * tex.height * 2];
 
-            newTexture.Apply();
+                float normalize = (1 << 16);
+                for (int y = 0; y < tex.height; ++y)
+                {
+                    for (int x = 0; x < tex.width; ++x)
+                    {
+                        int index = x + y * tex.width;
+                        int height = Mathf.RoundToInt(tex.GetPixel(y, x).r * normalize);
+                        ushort compressedHeight = (ushort)Mathf.Clamp(height, 0, ushort.MaxValue);
 
-            byte[] data = newTexture.EncodeToEXR(Texture2D.EXRFlags.None);
-            var fl = System.IO.File.OpenWrite(path);
-            fl.Write(data, 0, data.Length);
-            fl.Close();
+                        byte[] byteData = System.BitConverter.GetBytes(compressedHeight);
+                        data[index * 2 + 0] = byteData[0];
+                        data[index * 2 + 1] = byteData[1];
+                    }
+                }
+
+                FileStream fs = new FileStream(path, FileMode.Create);
+                fs.Write(data, 0, data.Length);
+                fs.Close();               
+            }
         }
 
         private void InitHeightMapTitles()

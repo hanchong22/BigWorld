@@ -382,7 +382,7 @@ namespace SeasunTerrain
                             this.heightMapList[heighMapID].SetPixel(x, y, color);
                         }
                     }
-                   
+
                     this.heightMapList[heighMapID].Apply();
 
                     Graphics.Blit(this.heightMapList[heighMapID], this.rtHeightMapList[heighMapID]);
@@ -398,6 +398,73 @@ namespace SeasunTerrain
             this.ReLoadLayer(scale);
             return true;
         }
+
+        public bool ReimportHeightData(int heighMapID, byte[] data, float scale, int resolution)
+        {
+            if(resolution != this.terrainData.heightmapResolution)
+            {
+                Debug.LogError($"导入数据尺寸为{resolution}，地型尺寸为{this.terrainData.heightmapResolution}，两者不一至，无法导入");
+                return false;
+            }
+
+            this.CheckOrInitData();
+
+            Texture2D tex;
+            if (heighMapID < 0)
+            {
+                tex = this.baseHeightMap;
+            }
+            else
+            {
+                if (this.heightMapList.Count > heighMapID)
+                {
+                    if (!this.heightMapList[heighMapID])
+                    {
+                        this.InitHeightMaps();
+                    }
+
+                    tex = this.heightMapList[heighMapID];
+
+                    Graphics.Blit(this.heightMapList[heighMapID], this.rtHeightMapList[heighMapID]);
+
+                }
+                else
+                {
+                    Debug.LogError($"{heighMapID} 不存在，地型是否没有初始化？");
+                    return false;
+                }
+            }
+
+            int heightmapRes = terrainData.heightmapResolution;
+            float[,] heights = new float[heightmapRes, heightmapRes];
+
+            float normalize = 1.0F / (1 << 16);
+            for (int y = 0; y < heightmapRes; ++y)
+            {
+                for (int x = 0; x < heightmapRes; ++x)
+                {
+                    int index = Mathf.Clamp(x, 0, heightmapRes - 1) + Mathf.Clamp(y, 0, heightmapRes - 1) * heightmapRes;
+
+                    ushort compressedHeight = System.BitConverter.ToUInt16(data, index * 2);
+
+                    float height = compressedHeight * normalize;
+                    heights[y, x] = height;
+
+                    Vector4 color = new Vector4(Mathf.Max(0, height), 0, 0, 0);
+                    tex.SetPixel(y, x, color);
+                }
+            }
+
+            AssetDatabase.SaveAssets();
+            if (heighMapID > 0)
+            {
+                Graphics.Blit(this.heightMapList[heighMapID], this.rtHeightMapList[heighMapID]);
+            }
+
+            this.ReLoadLayer(scale);
+            return true;
+        }
+
 
         public Texture2D GetMergedTexture(List<int> ids)
         {
