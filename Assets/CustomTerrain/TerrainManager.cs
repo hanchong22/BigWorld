@@ -17,11 +17,13 @@ namespace SeasunTerrain
         public static bool OnlyLoadSelectedLayer { get; set; }
         public static bool[] SelectedLayer { get; set; }
         public static bool IsBaseLayerEnable { get; set; }
+        public static float BrashTargetHeight { get; set; }
 
-        public static void InitAllTerrain(int heightMapNumber, int curEditorIdx)
+        public static void InitAllTerrain(int heightMapNumber, int curEditorIdx, float targetHeight)
         {
             TerrainManager.HeightMapNumber = heightMapNumber;
             TerrainManager.CurrentHeightMapIdx = curEditorIdx;
+            TerrainManager.BrashTargetHeight = targetHeight;
 
             Terrain[] allTerrains = GameObject.FindObjectsOfType<Terrain>();
             TerrainManager.AllTerrain.Clear();

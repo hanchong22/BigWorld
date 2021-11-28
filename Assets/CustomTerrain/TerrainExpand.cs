@@ -311,6 +311,8 @@ namespace SeasunTerrain
 
             this.CheckOrInitData();
 
+            float targetHeight = TerrainManager.BrashTargetHeight / terrain.terrainData.size.y;
+
             float[,] heights = new float[this.baseHeightMap.width, this.baseHeightMap.height];
             for (int y = 0; y < this.baseHeightMap.height; ++y)
             {
@@ -326,12 +328,12 @@ namespace SeasunTerrain
                         }
 
                         Vector4 value = this.heightMapList[i].GetPixel(x, y);
-                        float height = value.x + value.y;
-                        float v = Mathf.Max(0, height);
+                        float height = value.x + value.y; 
+                        float v = Mathf.Clamp01(height);
                         addHeight += v;
                     }
 
-                    heights[y, x] = addHeight * scale;
+                    heights[y, x] = Mathf.Clamp(addHeight * scale, 0, targetHeight);
                 }
             }
 
@@ -401,7 +403,7 @@ namespace SeasunTerrain
 
         public bool ReimportHeightData(int heighMapID, byte[] data, float scale, int resolution)
         {
-            if(resolution != this.terrainData.heightmapResolution)
+            if (resolution != this.terrainData.heightmapResolution)
             {
                 Debug.LogError($"导入数据尺寸为{resolution}，地型尺寸为{this.terrainData.heightmapResolution}，两者不一至，无法导入");
                 return false;

@@ -75,9 +75,9 @@ namespace SeasunTerrain
 
         public override void OnEnable()
         {
-            TerrainManager.InitAllTerrain(this.m_HeightMapNumber, this.m_CurrentHeightMapIdx);
+            TerrainManager.InitAllTerrain(this.m_HeightMapNumber, this.m_CurrentHeightMapIdx, this.m_TargetHeight);
             TerrainManager.IsBaseLayerEnable = this.m_IsBaseLayerEnable;
-            TerrainManager.SelectedLayer = this.m_selectedLyaers;
+            TerrainManager.SelectedLayer = this.m_selectedLyaers;           
             if (CustomLayerHeightPaint.m_CreateTool == null)
             {
                 CustomLayerHeightPaint.m_CreateTool = TileTerrainManagerTool.instance;
@@ -259,7 +259,10 @@ namespace SeasunTerrain
                 m_TargetHeight = EditorGUILayout.Slider(styles.height, m_TargetHeight - terrain.GetPosition().y, 0, terrain.terrainData.size.y) + terrain.GetPosition().y;
 
                 if (EditorGUI.EndChangeCheck())
+                {
+                    TerrainManager.BrashTargetHeight = m_TargetHeight;
                     Save(true);
+                }
             }
 
 
@@ -550,7 +553,7 @@ namespace SeasunTerrain
                         if (GUILayout.Button("导入文件..."))
                         {
                             string waitDeleteFile = "";
-                            string importFilePath = EditorUtility.OpenFilePanelWithFilters("选择地型高度图", System.IO.Directory.GetCurrentDirectory(), new string[] { "高度纹理", "png,jpg,jpeg,bmp,exr", "地型数据", "data,asset,byte", "All files", "*" });
+                            string importFilePath = EditorUtility.OpenFilePanelWithFilters("选择地型高度图", System.IO.Directory.GetCurrentDirectory(), new string[] { "高度纹理", "png,jpg,jpeg,bmp,exr", "地型数据", "data,asset,byte,raw", "All files", "*" });
                             if (!string.IsNullOrEmpty(importFilePath))
                             {
                                 Texture2D loadedTex = null;
@@ -819,7 +822,7 @@ namespace SeasunTerrain
         {
             if (TerrainManager.AllTerrain.Count == 0)
             {
-                TerrainManager.InitAllTerrain(this.m_HeightMapNumber, this.m_CurrentHeightMapIdx);
+                TerrainManager.InitAllTerrain(this.m_HeightMapNumber, this.m_CurrentHeightMapIdx, this.m_TargetHeight);
             }
 
             for (int i = 0; i < TerrainManager.AllTerrain.Count; ++i)
@@ -834,7 +837,7 @@ namespace SeasunTerrain
             this.InitHeightMapTitles();
             this.InitLayerNumberString();
 
-            TerrainManager.InitAllTerrain(this.m_HeightMapNumber, this.m_CurrentHeightMapIdx);
+            TerrainManager.InitAllTerrain(this.m_HeightMapNumber, this.m_CurrentHeightMapIdx, this.m_TargetHeight);
         }
 
         private void RemoveHeightLayer(int idx)
@@ -894,7 +897,7 @@ namespace SeasunTerrain
                     }
                 }
 
-                TerrainManager.InitAllTerrain(this.m_HeightMapNumber, this.m_CurrentHeightMapIdx);
+                TerrainManager.InitAllTerrain(this.m_HeightMapNumber, this.m_CurrentHeightMapIdx, this.m_TargetHeight);
 
                 this.ReloadSelectedLayers();
             }
