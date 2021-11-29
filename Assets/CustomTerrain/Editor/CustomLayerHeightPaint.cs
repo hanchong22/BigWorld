@@ -77,7 +77,7 @@ namespace SeasunTerrain
         {
             TerrainManager.InitAllTerrain(this.m_HeightMapNumber, this.m_CurrentHeightMapIdx, this.m_TargetHeight);
             TerrainManager.IsBaseLayerEnable = this.m_IsBaseLayerEnable;
-            TerrainManager.SelectedLayer = this.m_selectedLyaers;           
+            TerrainManager.SelectedLayer = this.m_selectedLyaers;
             if (CustomLayerHeightPaint.m_CreateTool == null)
             {
                 CustomLayerHeightPaint.m_CreateTool = TileTerrainManagerTool.instance;
@@ -303,6 +303,7 @@ namespace SeasunTerrain
 
         int titleEditorIdx = -1;
         int importType = 0; //=0 current Terraon; =1 all Terrains
+        int importLimitHeightType = 0;      //=0 limitHeight, =1 scale
         int exportLayersType = 0;
         int exportTerrainsType = 0;
         int exportFileType = 0; //0: image file, 1 data file
@@ -520,12 +521,6 @@ namespace SeasunTerrain
                 {
                     EditorGUILayout.BeginVertical();
                     {
-                        //EditorGUILayout.BeginHorizontal();
-                        //{
-                        //    GUILayout.Label("导入地型：");
-                        //    this.importType = EditorGUILayout.Popup(this.importType, new string[] { "当前地块", "所有地块" });
-                        //}
-                        //EditorGUILayout.EndHorizontal();
                         if (this.m_CurrentHeightMapIdx >= 0)
                         {
                             if (this.m_lockedLyaers[this.m_CurrentHeightMapIdx])
@@ -549,6 +544,13 @@ namespace SeasunTerrain
                         if (EditorGUI.EndChangeCheck())
                             Save(true);
                         EditorGUILayout.EndHorizontal();
+
+
+                        EditorGUILayout.BeginHorizontal();
+                        GUILayout.Label("超出笔刷高度时：");
+                        this.importLimitHeightType = EditorGUILayout.Popup(this.importLimitHeightType, new string[] { "截取有效值", "整体按比例缩小" });
+                        EditorGUILayout.EndHorizontal();
+
 
                         if (GUILayout.Button("导入文件..."))
                         {
@@ -577,7 +579,7 @@ namespace SeasunTerrain
 
                                     if (loadedTex && TerrainManager.CurrentSelectedTerrain)
                                     {
-                                        TerrainManager.CurrentSelectedTerrain.GetComponent<TerrainExpand>()?.ReimportHeightmap(this.m_CurrentHeightMapIdx, loadedTex, this.m_HeightScale);
+                                        TerrainManager.CurrentSelectedTerrain.GetComponent<TerrainExpand>()?.ReimportHeightmap(this.m_CurrentHeightMapIdx, loadedTex, this.m_HeightScale, this.importLimitHeightType);
                                     }
 
                                     if (!string.IsNullOrEmpty(waitDeleteFile))
@@ -604,7 +606,7 @@ namespace SeasunTerrain
 
                                     if (TerrainManager.CurrentSelectedTerrain)
                                     {
-                                        TerrainManager.CurrentSelectedTerrain.GetComponent<TerrainExpand>()?.ReimportHeightData(this.m_CurrentHeightMapIdx, data, this.m_HeightScale, resolution);
+                                        TerrainManager.CurrentSelectedTerrain.GetComponent<TerrainExpand>()?.ReimportHeightData(this.m_CurrentHeightMapIdx, data, this.m_HeightScale, resolution, this.importLimitHeightType);
                                     }
                                 }
                             }
@@ -768,7 +770,7 @@ namespace SeasunTerrain
 
                 FileStream fs = new FileStream(path, FileMode.Create);
                 fs.Write(data, 0, data.Length);
-                fs.Close();               
+                fs.Close();
             }
         }
 

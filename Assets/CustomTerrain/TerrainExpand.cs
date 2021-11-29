@@ -302,7 +302,7 @@ namespace SeasunTerrain
             this.rtHeightMapList.RemoveAt(idx);
         }
 
-        public void ReLoadLayer(float scale)
+        public void ReLoadLayer(float scale, bool limitHeightBetweenBrush = true)
         {
             if (!this.baseHeightMap)
             {
@@ -328,25 +328,36 @@ namespace SeasunTerrain
                         }
 
                         Vector4 value = this.heightMapList[i].GetPixel(x, y);
-                        float height = value.x + value.y; 
+                        float height = value.x + value.y;
                         float v = Mathf.Clamp01(height);
                         addHeight += v;
                     }
 
-                    heights[y, x] = Mathf.Clamp(addHeight * scale, 0, targetHeight);
+                    if (limitHeightBetweenBrush)
+                    {
+                        heights[y, x] = Mathf.Clamp(addHeight * scale, 0, targetHeight);
+                    }
+                    else
+                    {
+                        heights[y, x] = Mathf.Clamp(addHeight * scale, 0, 1);
+                    }
                 }
             }
 
             terrainData.SetHeights(0, 0, heights);
         }
 
-        public bool ReimportHeightmap(int heighMapID, Texture2D newTex, float scale)
+        public bool ReimportHeightmap(int heighMapID, Texture2D newTex, float scale, int limitType)
         {
             if (newTex.width != this.terrainData.heightmapTexture.width || newTex.height != this.terrainData.heightmapTexture.height)
             {
                 Debug.LogError($"导入的高度图尺寸与地型不符，必须使用{ this.terrainData.heightmapTexture.width} * { this.terrainData.heightmapTexture.height}的高度图，当前导入的图为{newTex.width} * {newTex.height}");
                 return false;
             }
+
+            float maxValue = newTex.GetMaxValueFromTexture(false);
+            float targetHeight = TerrainManager.BrashTargetHeight / terrain.terrainData.size.y;
+            float s = maxValue > targetHeight && limitType == 1 ? targetHeight : 1;
 
             if (heighMapID < 0)
             {
@@ -355,11 +366,11 @@ namespace SeasunTerrain
                     for (int x = 0; x < newTex.width; ++x)
                     {
                         Vector4 scolor = newTex.GetPixel(x, y);
-                        Vector4 color = new Vector4(Mathf.Max(0, scolor.x), 0, 0, 0);
+                        Vector4 color = new Vector4(Mathf.Max(0, scolor.x) * s, 0, 0, 0);
 
                         this.baseHeightMap.SetPixel(x, y, color);
                     }
-                }
+                }              
 
                 this.baseHeightMap.Apply();
 
@@ -379,7 +390,7 @@ namespace SeasunTerrain
                         for (int x = 0; x < newTex.width; ++x)
                         {
                             Vector4 scolor = newTex.GetPixel(x, y);
-                            Vector4 color = new Vector4(Mathf.Max(0, scolor.x), 0, 0, 0);
+                            Vector4 color = new Vector4(Mathf.Max(0, scolor.x) * s, 0, 0, 0);
 
                             this.heightMapList[heighMapID].SetPixel(x, y, color);
                         }
@@ -401,7 +412,7 @@ namespace SeasunTerrain
             return true;
         }
 
-        public bool ReimportHeightData(int heighMapID, byte[] data, float scale, int resolution)
+        public bool ReimportHeightData(int heighMapID, byte[] data, float scale, int resolution, int limitType)
         {
             if (resolution != this.terrainData.heightmapResolution)
             {
@@ -426,9 +437,6 @@ namespace SeasunTerrain
                     }
 
                     tex = this.heightMapList[heighMapID];
-
-                    Graphics.Blit(this.heightMapList[heighMapID], this.rtHeightMapList[heighMapID]);
-
                 }
                 else
                 {
@@ -451,8 +459,23 @@ namespace SeasunTerrain
 
                     float height = compressedHeight * normalize;
                     heights[y, x] = height;
+                   
+                }
+            }
 
-                    Vector4 color = new Vector4(Mathf.Max(0, height), 0, 0, 0);
+            float maxValue = heights.GetMaxValueFromRawData(heightmapRes);
+            float targetHeight = TerrainManager.BrashTargetHeight / terrain.terrainData.size.y;
+
+            float s = maxValue > targetHeight && limitType == 1 ? targetHeight : 1;
+
+            for (int y = 0; y < heightmapRes; ++y)
+            {
+                for (int x = 0; x < heightmapRes; ++x)
+                {
+                    float height = heights[y, x];
+                    heights[y, x] = height;
+
+                    Vector4 color = new Vector4(Mathf.Max(0, height) * s, 0, 0, 0);
                     tex.SetPixel(y, x, color);
                 }
             }

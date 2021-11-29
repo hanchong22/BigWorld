@@ -53,9 +53,9 @@ namespace SeasunTerrain
                 if (TerrainManager.AllTerrain[i] == t)
                 {
                     TerrainExpand te = TerrainManager.AllTerrain[i].gameObject.GetComponent<TerrainExpand>();
-                    if(te.rtHeightMapList == null || te.rtHeightMapList.Count <= layerIdx)
+                    if (te.rtHeightMapList == null || te.rtHeightMapList.Count <= layerIdx)
                     {
-                       // Debug.LogError($"{te.gameObject} : InitHeightMaps");
+                        // Debug.LogError($"{te.gameObject} : InitHeightMaps");
                         te.InitHeightMaps();
                     }
 
@@ -133,6 +133,50 @@ namespace SeasunTerrain
             ctx.GatherInitHeightmap(currentLayer);
             return ctx;
         }
+
+        public static float GetMaxValueFromTexture(this Texture2D tex, bool includeG)
+        {
+            float maxValue = 0;
+            for (int y = 0; y < tex.height; ++y)
+            {
+                for (int x = 0; x < tex.width; ++x)
+                {
+                    Vector4 scolor = tex.GetPixel(x, y);
+                    Vector4 color = new Vector4(Mathf.Max(0, scolor.x), includeG ? Mathf.Max(0, scolor.y) : 0, 0, 0);
+                    float v = color.x + color.y;
+                    if(v > maxValue)
+                    {
+                        maxValue = v;
+                    }
+                }
+            }
+
+            return maxValue;
+        }
+
+        public static float GetMaxValueFromRawData(this float[,] heights,int heightmapRes)
+        {
+            float maxValue = 0;
+
+            for (int y = 0; y < heightmapRes; ++y)
+            {
+                for (int x = 0; x < heightmapRes; ++x)
+                {
+                    int index = Mathf.Clamp(x, 0, heightmapRes - 1) + Mathf.Clamp(y, 0, heightmapRes - 1) * heightmapRes;
+
+                    float height = heights[y, x];
+
+                    if (height > maxValue)
+                    {
+                        maxValue = height;
+                    }
+                }
+            }
+
+            return maxValue;
+        }
+
+
 
         internal static void DrawQuad(RectInt destinationPixels, RectInt sourcePixels, Texture sourceTexture)
         {
