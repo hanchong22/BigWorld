@@ -110,7 +110,7 @@ namespace SeasunTerrain
         {
             Material mat = TerrainManager.GetPaintHeightExtMat();
 
-            float brushTargetHeight = Mathf.Clamp01((m_TargetHeight - paintContext.heightWorldSpaceMin) / paintContext.heightWorldSpaceSize);
+            float brushTargetHeight = (Event.current.shift ? -1 : 1) * Mathf.Clamp01((m_TargetHeight - paintContext.heightWorldSpaceMin) / paintContext.heightWorldSpaceSize);
 
             Vector4 brushParams = new Vector4(brushStrength * 0.01f, PaintContext.kNormalizedHeightScale * brushTargetHeight, 0.0f, 0.0f);
             mat.SetTexture("_BrushTex", brushTexture);

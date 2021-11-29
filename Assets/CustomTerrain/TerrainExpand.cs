@@ -41,7 +41,7 @@ namespace SeasunTerrain
             this.terrain = gameObject.GetComponent<Terrain>();
             this.terrainData = terrain.terrainData;
             string dataPath = AssetDatabase.GetAssetPath(this.terrainData);
-            this.terrainDataPath = dataPath.Substring(0, dataPath.IndexOf(System.IO.Path.GetFileName(dataPath)));
+            this.terrainDataPath = dataPath.Substring(0, dataPath.IndexOf(System.IO.Path.GetFileName(dataPath)));           
         }
 
         private void OnEnable()
@@ -370,7 +370,7 @@ namespace SeasunTerrain
 
                         this.baseHeightMap.SetPixel(x, y, color);
                     }
-                }              
+                }
 
                 this.baseHeightMap.Apply();
 
@@ -390,7 +390,8 @@ namespace SeasunTerrain
                         for (int x = 0; x < newTex.width; ++x)
                         {
                             Vector4 scolor = newTex.GetPixel(x, y);
-                            Vector4 color = new Vector4(Mathf.Max(0, scolor.x) * s, 0, 0, 0);
+                            float height = Mathf.Max(0, scolor.x) * s;
+                            Vector4 color = new Vector4(height / 2f, height / 2f, 0, 0);
 
                             this.heightMapList[heighMapID].SetPixel(x, y, color);
                         }
@@ -459,7 +460,7 @@ namespace SeasunTerrain
 
                     float height = compressedHeight * normalize;
                     heights[y, x] = height;
-                   
+
                 }
             }
 
@@ -475,7 +476,8 @@ namespace SeasunTerrain
                     float height = heights[y, x];
                     heights[y, x] = height;
 
-                    Vector4 color = new Vector4(Mathf.Max(0, height) * s, 0, 0, 0);
+                    height = Mathf.Max(0, height) * s;
+                    Vector4 color = new Vector4(height / 2f, height / 2f, 0, 0);
                     tex.SetPixel(y, x, color);
                 }
             }

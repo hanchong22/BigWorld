@@ -31,10 +31,13 @@ namespace SeasunTerrain
 
             for (int i = 0; i < TerrainManager.AllTerrain.Count; ++i)
             {
-                if (!TerrainManager.AllTerrain[i].gameObject.GetComponent<TerrainExpand>())
+                TerrainExpand terrainExpand = TerrainManager.AllTerrain[i].gameObject.GetComponent<TerrainExpand>();
+                if (!terrainExpand)
                 {
-                    TerrainManager.AllTerrain[i].gameObject.AddComponent<TerrainExpand>();
+                    terrainExpand = TerrainManager.AllTerrain[i].gameObject.AddComponent<TerrainExpand>();
                 }
+
+                terrainExpand.InitHeightMaps();
             }
         }
 
@@ -144,7 +147,7 @@ namespace SeasunTerrain
                     Vector4 scolor = tex.GetPixel(x, y);
                     Vector4 color = new Vector4(Mathf.Max(0, scolor.x), includeG ? Mathf.Max(0, scolor.y) : 0, 0, 0);
                     float v = color.x + color.y;
-                    if(v > maxValue)
+                    if (v > maxValue)
                     {
                         maxValue = v;
                     }
@@ -154,7 +157,7 @@ namespace SeasunTerrain
             return maxValue;
         }
 
-        public static float GetMaxValueFromRawData(this float[,] heights,int heightmapRes)
+        public static float GetMaxValueFromRawData(this float[,] heights, int heightmapRes)
         {
             float maxValue = 0;
 
