@@ -816,7 +816,7 @@ namespace SeasunTerrain
 
             for (int i = 0; i < this.m_HeightMapNumber; ++i)
             {
-                this.m_lockedLyaers[i] = tmp.Length > i ? tmp[i] : true;
+                this.m_lockedLyaers[i] = tmp.Length > i ? tmp[i] : false;
             }
         }
 
