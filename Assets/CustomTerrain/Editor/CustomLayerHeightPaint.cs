@@ -34,6 +34,7 @@ namespace SeasunTerrain
 
         //=0 无 =1导出状态 =2导入状态
         private ExpImportStatus expImportStatus = 0;
+        private bool isRotationLayer = false;
 
         class Styles
         {
@@ -284,6 +285,10 @@ namespace SeasunTerrain
 
             GUILayout.Space(3);
 
+            this.RotationLayerUI();
+
+            GUILayout.Space(3);
+
             if (this.waitToSaveTerrains.Count > 0)
             {
                 if (GUILayout.Button(styles.save))
@@ -495,6 +500,75 @@ namespace SeasunTerrain
             }
 
             EditorGUILayout.EndVertical();
+        }
+
+        float rotationAngle = 0f;
+        Vector2 rotationPivot = new Vector2(0.5f, 0.5f);
+
+        private void RotationLayerUI()
+        {
+            if (!this.isRotationLayer)
+            {
+                EditorGUILayout.BeginHorizontal();
+                {
+                    if (GUILayout.Button("旋转图层"))
+                    {
+                        this.isRotationLayer = true;
+                    }
+                }
+                EditorGUILayout.EndHorizontal();
+            }
+            else
+            {
+                EditorGUILayout.BeginHorizontal();
+                {
+                    if (GUILayout.Button("完成旋转"))
+                    {
+                        this.isRotationLayer = false;
+                    }
+                }
+                EditorGUILayout.EndHorizontal();
+
+                EditorGUILayout.BeginVertical();
+                {
+                    if (this.m_CurrentHeightMapIdx >= 0)
+                    {
+                        if (this.m_lockedLyaers[this.m_CurrentHeightMapIdx])
+                        {
+                            EditorGUILayout.HelpBox("当前图层正处于锁定状态", MessageType.Error);
+                        }
+                        else
+                        {
+                            EditorGUILayout.BeginHorizontal();
+                            GUILayout.Label("旋转角度：");
+                            this.rotationAngle = EditorGUILayout.Slider(this.rotationAngle, -5f, 5f);
+                            EditorGUILayout.EndHorizontal();
+
+                            EditorGUILayout.BeginHorizontal();
+                            GUILayout.Label("旋转中心(x,y)：");
+                            float rotationPivotX = this.rotationPivot.x;
+                            float rotationPivotY = this.rotationPivot.y;
+                            rotationPivotX = EditorGUILayout.Slider(rotationPivotX, 0, 1);
+                            rotationPivotY = EditorGUILayout.Slider(rotationPivotY, 0, 1);
+                            this.rotationPivot = new Vector2(rotationPivotX, rotationPivotY);
+                            EditorGUILayout.EndHorizontal();
+
+                            EditorGUILayout.BeginHorizontal();
+                            if (GUILayout.Button("应用"))
+                            {
+                                TerrainManager.CurrentSelectedTerrain.GetComponent<TerrainExpand>()?.RotaitonLayer(this.m_CurrentHeightMapIdx, this.rotationAngle, this.rotationPivot, this.m_HeightScale);
+                                this.rotationAngle = 0;
+                            }
+                            EditorGUILayout.EndHorizontal();
+                        }
+                    }
+                    else
+                    {
+                        EditorGUILayout.HelpBox("基础图层能旋转", MessageType.Warning);
+                    }
+                }
+                EditorGUILayout.EndVertical();
+            }
         }
 
         private void ExportImportLayers()

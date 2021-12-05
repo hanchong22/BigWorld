@@ -19,6 +19,8 @@ namespace SeasunTerrain
         public static bool IsBaseLayerEnable { get; set; }
         public static float BrashTargetHeight { get; set; }
 
+        public static Material RotationMaterial { get; set; }
+
         public static void InitAllTerrain(int heightMapNumber, int curEditorIdx, float targetHeight)
         {
             TerrainManager.HeightMapNumber = heightMapNumber;

@@ -216,7 +216,7 @@ namespace SeasunTerrain
             RenderTexture oldRT = RenderTexture.active;
             RenderTexture targetRt = null;
             RenderTexture sourceRt = editContext.destinationRenderTexture;      //已经绘制结果：原地型高度 + 笔刷   
-            RenderTexture oldTerrainHeight = editContext.sourceRenderTexture;   //原地型高度
+           // RenderTexture oldTerrainHeight = editContext.sourceRenderTexture;   //原地型高度
             Texture2D targetTex = null;
 
             this.CheckOrInitData();
@@ -238,7 +238,7 @@ namespace SeasunTerrain
                 sourceRt.filterMode = FilterMode.Point;
 
                 blitMaterial.SetTexture("_MainTex", sourceRt);
-                blitMaterial.SetTexture("_OldHeightMap", oldTerrainHeight);
+               // blitMaterial.SetTexture("_OldHeightMap", oldTerrainHeight);
                 blitMaterial.SetInt("_HeightNormal", heightNormal);
                 blitMaterial.SetPass(0);
                 TerrainManager.DrawQuad(dstPixels, sourcePixels, sourceRt);
@@ -507,6 +507,44 @@ namespace SeasunTerrain
 
             this.ReLoadLayer(scale);
             return true;
+        }        
+
+        public void RotaitonLayer(int heighMapID, float angle, Vector2 pivot, float scale)
+        {
+            RenderTexture rt;
+            Texture2D tex;
+            if (this.rtHeightMapList.Count > heighMapID && this.heightMapList.Count > heighMapID)
+            {
+                if (!this.rtHeightMapList[heighMapID] || ! this.heightMapList[heighMapID])
+                {
+                    this.InitHeightMaps();
+                }
+
+                rt = this.rtHeightMapList[heighMapID];
+                tex = this.heightMapList[heighMapID];
+            }
+            else
+            {
+                Debug.LogError($"{heighMapID} 不存在，地型是否没有初始化？");
+                return;
+            }
+
+            if(!TerrainManager.RotationMaterial)
+            {
+                TerrainManager.RotationMaterial = CoreUtils.CreateEngineMaterial("Hidden/TerrainEngine/RotationLayer");
+            }
+
+            TerrainManager.RotationMaterial.SetTexture("_MainTex", tex);
+            TerrainManager.RotationMaterial.SetFloat("_Angle", angle);
+            TerrainManager.RotationMaterial.SetVector("_Pivot", pivot);
+
+            Graphics.Blit(tex, rt, TerrainManager.RotationMaterial, 0);
+            CopyRtToTexture2D(rt, tex);
+
+            AssetDatabase.SaveAssets();
+
+            this.ReLoadLayer(scale);
+
         }
 
 
