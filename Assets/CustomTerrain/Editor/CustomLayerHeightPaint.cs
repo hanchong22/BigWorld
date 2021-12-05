@@ -106,7 +106,7 @@ namespace SeasunTerrain
             return mat;
         }
 
-        private Material ApplyBrushFromBaseHeightInternal(PaintContext paintContext, float brushStrength, Texture brushTexture, BrushTransform brushXform, Terrain terrain)
+        private Material ApplyBrushFromBaseHeightInternal(PaintContextExp paintContext, float brushStrength, Texture brushTexture, BrushTransform brushXform, Terrain terrain)
         {
             Material mat = TerrainManager.GetPaintHeightExtMat();
 
@@ -151,7 +151,7 @@ namespace SeasunTerrain
                     terrainExpandData = paintContextTmp.GetTerrain(i).gameObject.AddComponent<TerrainExpand>();
                 }
 
-                terrainExpandData.OnPaint(this.m_CurrentHeightMapIdx, paintContextTmp, i, matTmp);
+                terrainExpandData.OnPaint(this.m_CurrentHeightMapIdx, paintContextTmp, i, (Event.current.shift ? -1 : 1));
 
                 if (!this.waitToSaveTerrains.Contains(terrainExpandData))
                 {

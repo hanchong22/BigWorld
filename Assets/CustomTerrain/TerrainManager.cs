@@ -130,7 +130,7 @@ namespace SeasunTerrain
         public static PaintContextExp BeginPaintHeightMapLyaer(Terrain terrain, Rect boundsInTerrainSpace, int currentLayer, int extraBorderPixels = 0)
         {
             int heightmapResolution = terrain.terrainData.heightmapResolution;
-            PaintContextExp ctx = InitializePaintContext(terrain, heightmapResolution, heightmapResolution, Terrain.heightmapRenderTextureFormat, boundsInTerrainSpace, extraBorderPixels);
+            PaintContextExp ctx = InitializePaintContext(terrain, heightmapResolution, heightmapResolution, RenderTextureFormat.ARGBHalf /*Terrain.heightmapRenderTextureFormat*/, boundsInTerrainSpace, extraBorderPixels);
 
             //将地型高度图与笔刷相交的区域blit到笔刷中，用于后续的高度计算
             ctx.GatherInitHeightmap(currentLayer);

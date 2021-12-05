@@ -146,16 +146,17 @@
                 // out of bounds multiplier
                 float oob = all(saturate(brushUV) == brushUV) ? 1.0f : 0.0f;
 
-                float height = UnpackHeightmap(tex2D(_MainTex, heightmapUV));
-                float brushStrength = BRUSH_STRENGTH * oob * UnpackHeightmap(tex2D(_BrushTex, brushUV));
+                float height = tex2D(_MainTex, heightmapUV).r;                                  //原地型高度
+                float brushStrength = BRUSH_STRENGTH * oob * tex2D(_BrushTex, brushUV).r;       //笔刷高度
 
                 // smooth set
-                float targetHeight = BRUSH_TARGETHEIGHT;
+                float targetHeight = BRUSH_TARGETHEIGHT;                                        //目标高度(降低时为负)
 
+                float deltaHeight = 0;
                 // have to do this check to ensure strength 0 == no change (code below makes a super tiny change even with strength 0)
                 if (brushStrength > 0.0f)
                 {
-                    float deltaHeight = height - targetHeight;
+                    deltaHeight = height - targetHeight;
 
                     // see https://www.desmos.com/calculator/880ka3lfkl
                     float p = saturate(brushStrength);
@@ -167,9 +168,20 @@
                     deltaHeight = deltaHeight + g / w;
 
                     height = targetHeight + deltaHeight;
-                }
 
-                return PackHeightmap(height);
+                    if(targetHeight < 0 )
+                    {
+                        return float4(height, brushStrength, -targetHeight, 0);
+                    }
+                    else
+                    {
+                    return float4(height, 0, 0, 0);
+                    }
+                }
+                else
+                {
+                   return float4(height, 0, 0, 0);
+                }
             }
             ENDCG
         }

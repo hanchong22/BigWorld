@@ -41,7 +41,7 @@ namespace SeasunTerrain
             this.terrain = gameObject.GetComponent<Terrain>();
             this.terrainData = terrain.terrainData;
             string dataPath = AssetDatabase.GetAssetPath(this.terrainData);
-            this.terrainDataPath = dataPath.Substring(0, dataPath.IndexOf(System.IO.Path.GetFileName(dataPath)));           
+            this.terrainDataPath = dataPath.Substring(0, dataPath.IndexOf(System.IO.Path.GetFileName(dataPath)));
         }
 
         private void OnEnable()
@@ -87,7 +87,7 @@ namespace SeasunTerrain
 
                 if (!rt)
                 {
-                    rt = RenderTexture.GetTemporary(this.terrainData.heightmapTexture.width, this.terrainData.heightmapTexture.height, 0, RenderTextureFormat.RGHalf);
+                    rt = RenderTexture.GetTemporary(this.terrainData.heightmapTexture.width, this.terrainData.heightmapTexture.height, 0, RenderTextureFormat.ARGBHalf);
                 }
 
                 if (!tex)
@@ -96,7 +96,7 @@ namespace SeasunTerrain
 
                     if (!tex)
                     {
-                        tex = new Texture2D(this.terrainData.heightmapTexture.width, this.terrainData.heightmapTexture.height, TextureFormat.RGHalf, false);
+                        tex = new Texture2D(this.terrainData.heightmapTexture.width, this.terrainData.heightmapTexture.height, TextureFormat.RGBAHalf, false, true);
                         Graphics.Blit(Texture2D.blackTexture, rt);
                     }
                     else
@@ -204,7 +204,7 @@ namespace SeasunTerrain
         RectInt dstPixels;
         RectInt sourcePixels;
 
-        public void OnPaint(int heightMapIdx, UnityEngine.Experimental.TerrainAPI.PaintContext editContext, int tileIndex, Material brushMat)
+        public void OnPaint(int heightMapIdx, UnityEngine.Experimental.TerrainAPI.PaintContext editContext, int tileIndex, int heightNormal)
         {
             Material blitMaterial = TerrainManager.GetHeightSubtractionMat();
 
@@ -215,7 +215,7 @@ namespace SeasunTerrain
 
             RenderTexture oldRT = RenderTexture.active;
             RenderTexture targetRt = null;
-            RenderTexture sourceRt = editContext.destinationRenderTexture;      //绘制结果：原地型高度 + 笔刷   
+            RenderTexture sourceRt = editContext.destinationRenderTexture;      //已经绘制结果：原地型高度 + 笔刷   
             RenderTexture oldTerrainHeight = editContext.sourceRenderTexture;   //原地型高度
             Texture2D targetTex = null;
 
@@ -239,6 +239,7 @@ namespace SeasunTerrain
 
                 blitMaterial.SetTexture("_MainTex", sourceRt);
                 blitMaterial.SetTexture("_OldHeightMap", oldTerrainHeight);
+                blitMaterial.SetInt("_HeightNormal", heightNormal);
                 blitMaterial.SetPass(0);
                 TerrainManager.DrawQuad(dstPixels, sourcePixels, sourceRt);
 
@@ -328,9 +329,25 @@ namespace SeasunTerrain
                         }
 
                         Vector4 value = this.heightMapList[i].GetPixel(x, y);
-                        float height = value.x + value.y;
-                        float v = Mathf.Clamp01(height);
-                        addHeight += v;
+                       
+                        if(value.w > 0)
+                        {
+                            float deltaHeight = addHeight - (-value.z);
+
+                            float p = Mathf.Clamp01(value.w);
+                            float w = (1.0f - p) / (p + 0.000001f);                           
+                            //float w = (1.0f - p * p) / (p + 0.000001f);
+                            float fx = Mathf.Clamp(w * deltaHeight, -1.0f, 1.0f);
+                            float g = fx * (0.5f * fx * Mathf.Sign(fx) - 1.0f);
+
+                            deltaHeight = deltaHeight + g / w;
+
+                            addHeight = (-value.z) + deltaHeight;
+                        }
+                        else
+                        {                          
+                            addHeight += value.x + value.y;
+                        }                       
                     }
 
                     if (limitHeightBetweenBrush)
@@ -366,7 +383,7 @@ namespace SeasunTerrain
                     for (int x = 0; x < newTex.width; ++x)
                     {
                         Vector4 scolor = newTex.GetPixel(x, y);
-                        Vector4 color = new Vector4(Mathf.Max(0, scolor.x) * s, 0, 0, 0);
+                        Vector4 color = new Vector4(Mathf.Max(0, scolor.x) * s, Mathf.Max(0, scolor.y) * s, 0, 0);
 
                         this.baseHeightMap.SetPixel(x, y, color);
                     }

@@ -3,6 +3,7 @@ Shader "Hidden/TerrainEngine/HeightSubtraction" {
     {
         _MainTex ("Texture", any) = "" {}
         _OldHeightMap ("Old Height Map", 2D) = "Black" {}
+        _HeightNormal("HeightNormal", int) = 1
     }
     SubShader {
         Pass {
@@ -15,6 +16,7 @@ Shader "Hidden/TerrainEngine/HeightSubtraction" {
 
             UNITY_DECLARE_SCREENSPACE_TEXTURE(_MainTex);
             UNITY_DECLARE_SCREENSPACE_TEXTURE(_OldHeightMap);
+            int _HeightNormal;
             uniform float4 _MainTex_ST;
             uniform float4 _OldHeightMap_ST;
             uniform float _Height_Offset;
@@ -42,14 +44,23 @@ Shader "Hidden/TerrainEngine/HeightSubtraction" {
                 return o;
             }
 
-            float4 frag (v2f i) : SV_Target
+            half4 frag (v2f i) : SV_Target
             {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(i);
-                float4 map = UNITY_SAMPLE_SCREENSPACE_TEXTURE(_MainTex, i.texcoord);
-                float height = saturate(map.x + map.y); //UnpackHeightmap(UNITY_SAMPLE_SCREENSPACE_TEXTURE(_MainTex, i.texcoord));
-                //float oldHeight = UnpackHeightmap(UNITY_SAMPLE_SCREENSPACE_TEXTURE(_OldHeightMap, i.texcoord));
-                height = (height) * _Height_Scale + _Height_Offset ;
-                return saturate(height);
+                float4 map = tex2D(_MainTex, i.texcoord);
+                float height = map.r; 
+                float4 oldMap = tex2D(_OldHeightMap, i.texcoord);
+                float oldHeight = saturate(oldMap.x + oldMap.y);
+
+                //height = saturate((height) * _Height_Scale + _Height_Offset);
+               // if(_HeightNormal == 1)
+                //{
+                    return half4(height,height, map.b, map.a * 2);
+               // }
+               // else
+             //   {                    
+              //      return half4(0, 0, oldHeight - height, oldHeight - height);
+              //  }
             }
             ENDCG
 

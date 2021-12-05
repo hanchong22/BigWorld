@@ -31,12 +31,12 @@ namespace SeasunTerrain
         public void OnEnable()
         {
             this.script = this.target as TerrainExpand;
-            TerrainManager.CurrentSelectedTerrain = this.script.gameObject.GetComponent<Terrain>();           
+            TerrainManager.CurrentSelectedTerrain = this.script.gameObject.GetComponent<Terrain>();
         }
 
         public void OnDestroy()
         {
-            TerrainManager.CurrentSelectedTerrain = null;            
+            TerrainManager.CurrentSelectedTerrain = null;
         }
 
         public override void OnInspectorGUI()
@@ -49,12 +49,12 @@ namespace SeasunTerrain
             {
                 if (this.script && this.script.rtHeightMapList.Count >= TerrainManager.HeightMapNumber)
                 {
-                    GUI.DrawTexture(new Rect(5, 5, 100, 100), this.script.rtHeightMapList[TerrainManager.CurrentHeightMapIdx]);
+                    GUI.DrawTexture(new Rect(5, 5, 100, 100), this.script.rtHeightMapList[TerrainManager.CurrentHeightMapIdx], ScaleMode.ScaleToFit, false);
                 }
             }
             else
             {
-                GUI.DrawTexture(new Rect(5, 5, 100, 100), this.script.BaseHeightMap);
+                GUI.DrawTexture(new Rect(5, 5, 100, 100), this.script.BaseHeightMap, ScaleMode.ScaleToFit, false);
             }
 
 
