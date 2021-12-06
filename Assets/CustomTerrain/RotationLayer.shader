@@ -4,8 +4,9 @@ Shader "Hidden/TerrainEngine/RotationLayer"
 	Properties
 	{
 		_MainTex("Texture", 2D) = "white" {}
-	    _Angle("Angle", Range(-5.0,  5.0)) = 0.0
-        _Pivot("Pivot", vector) = (0.5,0.5,0,0)
+        _Angle("Angle", Range(-5.0,  5.0)) = 0.0
+        _Scale("Scale", Range(0, 3)) = 1
+        _Pivot("Pivot", vector) = (0.5,0.5,0,0)        
 	}
 
 	SubShader
@@ -13,6 +14,7 @@ Shader "Hidden/TerrainEngine/RotationLayer"
         Tags{ "RenderType" = "Opaque" }    
         Pass
         {
+            Name "Rotation"
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
@@ -24,6 +26,7 @@ Shader "Hidden/TerrainEngine/RotationLayer"
             };
     
             float _Angle;
+            float _Scale;
             half4 _Pivot;
         
             v2f vert(appdata_base v)
@@ -31,14 +34,15 @@ Shader "Hidden/TerrainEngine/RotationLayer"
                 v2f o;
                 o.pos = UnityObjectToClipPos(v.vertex);
         
-                float2 pivot = _Pivot.xy;         //中心点
+                float2 pivot = _Pivot.xy;        
+                float2 offset = _Pivot.zw;
         
                 float cosAngle = cos(_Angle);
                 float sinAngle = sin(_Angle);
-                float2x2 rot = float2x2(cosAngle, -sinAngle, sinAngle, cosAngle);  //确定以z轴旋转
+                float2x2 rot = float2x2(cosAngle, -sinAngle, sinAngle, cosAngle);  
         
-                float2 uv = v.texcoord.xy - pivot;
-                o.uv = mul(rot, uv);           //旋转矩阵相乘变换坐标
+                float2 uv = v.texcoord.xy / _Scale - pivot + offset;
+                o.uv = mul(rot, uv); 
                 o.uv += pivot;
                 
                 return o;
@@ -54,5 +58,6 @@ Shader "Hidden/TerrainEngine/RotationLayer"
         
             ENDCG
         }
+       
 	}
 }

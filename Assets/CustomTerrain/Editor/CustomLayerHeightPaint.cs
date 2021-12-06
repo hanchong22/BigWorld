@@ -503,7 +503,8 @@ namespace SeasunTerrain
         }
 
         float rotationAngle = 0f;
-        Vector2 rotationPivot = new Vector2(0.5f, 0.5f);
+        Vector4 rotationPivot = new Vector4(0.5f, 0.5f, 0, 0);
+        float layerScale = 1f;
 
         private void RotationLayerUI()
         {
@@ -550,14 +551,33 @@ namespace SeasunTerrain
                             float rotationPivotY = this.rotationPivot.y;
                             rotationPivotX = EditorGUILayout.Slider(rotationPivotX, 0, 1);
                             rotationPivotY = EditorGUILayout.Slider(rotationPivotY, 0, 1);
-                            this.rotationPivot = new Vector2(rotationPivotX, rotationPivotY);
                             EditorGUILayout.EndHorizontal();
 
                             EditorGUILayout.BeginHorizontal();
-                            if (GUILayout.Button("应用"))
+                            GUILayout.Label("位移(x,y)：");
+                            float offsetX = this.rotationPivot.z;
+                            float offsetY = this.rotationPivot.w;
+                            offsetX = EditorGUILayout.Slider(offsetX, 0, 1);
+                            offsetY = EditorGUILayout.Slider(offsetY, 0, 1);
+                            EditorGUILayout.EndHorizontal();
+
+                            this.rotationPivot = new Vector4(rotationPivotX, rotationPivotY, offsetX, offsetY);
+
+                            EditorGUILayout.BeginHorizontal();
+                            GUILayout.Label("缩放：");
+                            this.layerScale = EditorGUILayout.Slider(this.layerScale, 0, 3);
+                            EditorGUILayout.EndHorizontal();
+
+                            EditorGUILayout.BeginHorizontal();
+                            if (GUILayout.Button("应用") && TerrainManager.CurrentSelectedTerrain.GetComponent<TerrainExpand>())
                             {
-                                TerrainManager.CurrentSelectedTerrain.GetComponent<TerrainExpand>()?.RotaitonLayer(this.m_CurrentHeightMapIdx, this.rotationAngle, this.rotationPivot, this.m_HeightScale);
-                                this.rotationAngle = 0;
+                                TerrainManager.CurrentSelectedTerrain.GetComponent<TerrainExpand>()?.RotaitonLayer(this.m_CurrentHeightMapIdx, this.rotationAngle, this.rotationPivot, this.layerScale, this.m_HeightScale);
+
+                                if (!this.waitToSaveTerrains.Contains(TerrainManager.CurrentSelectedTerrain.GetComponent<TerrainExpand>()))
+                                {
+                                    this.waitToSaveTerrains.Add(TerrainManager.CurrentSelectedTerrain.GetComponent<TerrainExpand>());
+                                }
+
                             }
                             EditorGUILayout.EndHorizontal();
                         }

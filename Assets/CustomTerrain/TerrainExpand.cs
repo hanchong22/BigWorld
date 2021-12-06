@@ -216,7 +216,7 @@ namespace SeasunTerrain
             RenderTexture oldRT = RenderTexture.active;
             RenderTexture targetRt = null;
             RenderTexture sourceRt = editContext.destinationRenderTexture;      //已经绘制结果：原地型高度 + 笔刷   
-           // RenderTexture oldTerrainHeight = editContext.sourceRenderTexture;   //原地型高度
+                                                                                // RenderTexture oldTerrainHeight = editContext.sourceRenderTexture;   //原地型高度
             Texture2D targetTex = null;
 
             this.CheckOrInitData();
@@ -238,7 +238,7 @@ namespace SeasunTerrain
                 sourceRt.filterMode = FilterMode.Point;
 
                 blitMaterial.SetTexture("_MainTex", sourceRt);
-               // blitMaterial.SetTexture("_OldHeightMap", oldTerrainHeight);
+                // blitMaterial.SetTexture("_OldHeightMap", oldTerrainHeight);
                 blitMaterial.SetInt("_HeightNormal", heightNormal);
                 blitMaterial.SetPass(0);
                 TerrainManager.DrawQuad(dstPixels, sourcePixels, sourceRt);
@@ -329,13 +329,13 @@ namespace SeasunTerrain
                         }
 
                         Vector4 value = this.heightMapList[i].GetPixel(x, y);
-                       
-                        if(value.w > 0)
+
+                        if (value.w > 0)
                         {
                             float deltaHeight = addHeight - (-value.z);
 
                             float p = Mathf.Clamp01(value.w);
-                            float w = (1.0f - p) / (p + 0.000001f);                           
+                            float w = (1.0f - p) / (p + 0.000001f);
                             //float w = (1.0f - p * p) / (p + 0.000001f);
                             float fx = Mathf.Clamp(w * deltaHeight, -1.0f, 1.0f);
                             float g = fx * (0.5f * fx * Mathf.Sign(fx) - 1.0f);
@@ -345,9 +345,9 @@ namespace SeasunTerrain
                             addHeight = (-value.z) + deltaHeight;
                         }
                         else
-                        {                          
+                        {
                             addHeight += value.x + value.y;
-                        }                       
+                        }
                     }
 
                     if (limitHeightBetweenBrush)
@@ -507,15 +507,15 @@ namespace SeasunTerrain
 
             this.ReLoadLayer(scale);
             return true;
-        }        
+        }
 
-        public void RotaitonLayer(int heighMapID, float angle, Vector2 pivot, float scale)
+        public void RotaitonLayer(int heighMapID, float angle, Vector4 pivot, float layerScale, float scale)
         {
             RenderTexture rt;
             Texture2D tex;
             if (this.rtHeightMapList.Count > heighMapID && this.heightMapList.Count > heighMapID)
             {
-                if (!this.rtHeightMapList[heighMapID] || ! this.heightMapList[heighMapID])
+                if (!this.rtHeightMapList[heighMapID] || !this.heightMapList[heighMapID])
                 {
                     this.InitHeightMaps();
                 }
@@ -529,13 +529,14 @@ namespace SeasunTerrain
                 return;
             }
 
-            if(!TerrainManager.RotationMaterial)
+            if (!TerrainManager.RotationMaterial)
             {
                 TerrainManager.RotationMaterial = CoreUtils.CreateEngineMaterial("Hidden/TerrainEngine/RotationLayer");
             }
 
             TerrainManager.RotationMaterial.SetTexture("_MainTex", tex);
             TerrainManager.RotationMaterial.SetFloat("_Angle", angle);
+            TerrainManager.RotationMaterial.SetFloat("_Scale", layerScale);
             TerrainManager.RotationMaterial.SetVector("_Pivot", pivot);
 
             Graphics.Blit(tex, rt, TerrainManager.RotationMaterial, 0);
