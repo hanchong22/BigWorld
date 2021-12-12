@@ -27,6 +27,7 @@ Shader "Hidden/TerrainEngine/RotationLayer"
     
             float _Angle;
             float _Scale;
+            float _HeightScale;
             half4 _Pivot;
         
             v2f vert(appdata_base v)
@@ -50,10 +51,13 @@ Shader "Hidden/TerrainEngine/RotationLayer"
         
             sampler2D _MainTex;
         
-            fixed4 frag(v2f i) : SV_Target
+            half4 frag(v2f i) : SV_Target
             {
-        
-                return tex2D(_MainTex, i.uv);
+                if(i.uv.x < 0 || i.uv.y < 0 || i.uv.x > 1 || i.uv.y > 1)
+                    return half4(0,0,0,0);
+
+                half4 result = tex2D(_MainTex, i.uv);
+                return result * half4(1,_HeightScale,1,1);
             }
         
             ENDCG

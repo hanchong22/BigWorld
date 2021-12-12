@@ -19,6 +19,7 @@ namespace SeasunTerrain
 #if UNITY_EDITOR
 
         private List<Texture2D> heightMapList;
+        private List<Texture2D> originMapList;
 
         private Texture2D baseHeightMap;
 
@@ -27,6 +28,8 @@ namespace SeasunTerrain
         private string terrainDataPath;
 
         private string baseHeightMapPath;
+
+        public bool DrawCenterFlag;
 
 
         public List<RenderTexture> rtHeightMapList { get; private set; } = new List<RenderTexture>();
@@ -59,6 +62,11 @@ namespace SeasunTerrain
             TerrainManager.AddTerrain(this.GetComponent<Terrain>());
         }
 
+        private void OnDrawGizmos()
+        {
+           
+        }
+
         public void InitHeightMaps()
         {
             this.changedIds.Clear();
@@ -68,16 +76,27 @@ namespace SeasunTerrain
                 this.heightMapList = new List<Texture2D>();
             }
 
+            if (this.originMapList == null)
+            {
+                this.originMapList = new List<Texture2D>();
+            }
+
             for (int i = 0; i < TerrainManager.HeightMapNumber; ++i)
             {
                 RenderTexture rt = null;
                 Texture2D tex = null;
+                Texture2D texOrigin = null;
 
                 this.changedIds.Add(false);
 
                 if (this.heightMapList.Count > i)
                 {
                     tex = this.heightMapList[i];
+                }
+
+                if (this.originMapList.Count > i)
+                {
+                    texOrigin = this.originMapList[i];
                 }
 
                 if (this.rtHeightMapList.Count > i)
@@ -109,6 +128,12 @@ namespace SeasunTerrain
                     Graphics.Blit(tex, rt);
                 }
 
+                if (!texOrigin && File.Exists(System.IO.Path.Combine(this.terrainDataPath, $"{this.terrainData.name}_heightmap_origin{i}.asset")))
+                {
+                    texOrigin = AssetDatabase.LoadAssetAtPath<Texture2D>(System.IO.Path.Combine(this.terrainDataPath, $"{this.terrainData.name}_heightmap_origin{i}.asset"));
+                }
+
+
                 if (this.rtHeightMapList.Count > i)
                 {
                     this.rtHeightMapList[i] = rt;
@@ -125,6 +150,15 @@ namespace SeasunTerrain
                 else
                 {
                     this.heightMapList.Add(tex);
+                }
+
+                if (this.originMapList.Count > i)
+                {
+                    this.originMapList[i] = texOrigin;
+                }
+                else
+                {
+                    this.originMapList.Add(texOrigin);
                 }
             }
 
@@ -172,6 +206,19 @@ namespace SeasunTerrain
                 }
 
                 this.heightMapList.Clear();
+            }
+
+            if (this.originMapList != null)
+            {
+                for (int i = 0; i < this.originMapList.Count; ++i)
+                {
+                    if (this.originMapList[i])
+                    {
+                        GameObject.DestroyImmediate(this.originMapList[i]);
+                    }
+                }
+
+                this.originMapList.Clear();
             }
 
             this.changedIds.Clear();
@@ -282,14 +329,29 @@ namespace SeasunTerrain
             }
 
             Texture2D waitToDelTex = this.heightMapList[idx];
+            Texture2D waitToDelTex2 = this.originMapList[idx];
             RenderTexture waitToDelRt = this.rtHeightMapList[idx];
 
             string path = AssetDatabase.GetAssetPath(waitToDelTex);
+            string path2 = waitToDelTex2 ? AssetDatabase.GetAssetPath(waitToDelTex2) : null;
 
             AssetDatabase.DeleteAsset(path);
             GameObject.DestroyImmediate(waitToDelTex);
             RenderTexture.ReleaseTemporary(waitToDelRt);
 
+            if (waitToDelTex2)
+            {
+                GameObject.DestroyImmediate(waitToDelTex2);
+                AssetDatabase.DeleteAsset(path2);
+
+                for (int i = idx + 1; i < this.originMapList.Count; ++i)
+                {
+                    string tmpPath = AssetDatabase.GetAssetPath(this.originMapList[i]);
+                    AssetDatabase.RenameAsset(tmpPath, path2);
+                    this.originMapList[i] = AssetDatabase.LoadAssetAtPath<Texture2D>(path2);
+                    path2 = tmpPath;
+                }
+            }
 
             for (int i = idx + 1; i < this.heightMapList.Count; ++i)
             {
@@ -301,6 +363,7 @@ namespace SeasunTerrain
 
             this.heightMapList.RemoveAt(idx);
             this.rtHeightMapList.RemoveAt(idx);
+            this.originMapList.RemoveAt(idx);
         }
 
         public void ReLoadLayer(float scale, bool limitHeightBetweenBrush = true)
@@ -418,6 +481,11 @@ namespace SeasunTerrain
 
                     Graphics.Blit(this.heightMapList[heighMapID], this.rtHeightMapList[heighMapID]);
 
+                    if (this.originMapList[heighMapID])
+                    {
+                        CopyRtToTexture2D(this.rtHeightMapList[heighMapID], this.originMapList[heighMapID]);
+                    }
+
                     AssetDatabase.SaveAssets();
                 }
                 else
@@ -498,21 +566,30 @@ namespace SeasunTerrain
                     tex.SetPixel(y, x, color);
                 }
             }
-
-            AssetDatabase.SaveAssets();
+           
             if (heighMapID > 0)
             {
                 Graphics.Blit(this.heightMapList[heighMapID], this.rtHeightMapList[heighMapID]);
+
+                if (this.originMapList[heighMapID])
+                {
+                    CopyRtToTexture2D(this.rtHeightMapList[heighMapID], this.originMapList[heighMapID]);
+                }
             }
+
+            AssetDatabase.SaveAssets();
 
             this.ReLoadLayer(scale);
             return true;
         }
 
-        public void RotaitonLayer(int heighMapID, float angle, Vector4 pivot, float layerScale, float scale)
-        {
+        public void RotaitonLayer(int heighMapID, float angle, Vector4 pivot, float layerScale, float layerHeightScale, float scale)
+        {           
             RenderTexture rt;
             Texture2D tex;
+
+            Texture2D originTex;
+
             if (this.rtHeightMapList.Count > heighMapID && this.heightMapList.Count > heighMapID)
             {
                 if (!this.rtHeightMapList[heighMapID] || !this.heightMapList[heighMapID])
@@ -522,6 +599,16 @@ namespace SeasunTerrain
 
                 rt = this.rtHeightMapList[heighMapID];
                 tex = this.heightMapList[heighMapID];
+
+                if(!this.originMapList[heighMapID])
+                {
+                    this.originMapList[heighMapID] = new Texture2D(tex.width, tex.height, tex.format, false);
+                    CopyRtToTexture2D(rt, this.originMapList[heighMapID]);
+
+                    AssetDatabase.CreateAsset(this.originMapList[heighMapID], System.IO.Path.Combine(this.terrainDataPath, $"{this.terrainData.name}_heightmap_origin{heighMapID}.asset"));                   
+                }
+
+                originTex = this.originMapList[heighMapID];
             }
             else
             {
@@ -534,9 +621,10 @@ namespace SeasunTerrain
                 TerrainManager.RotationMaterial = CoreUtils.CreateEngineMaterial("Hidden/TerrainEngine/RotationLayer");
             }
 
-            TerrainManager.RotationMaterial.SetTexture("_MainTex", tex);
+            TerrainManager.RotationMaterial.SetTexture("_MainTex", originTex);
             TerrainManager.RotationMaterial.SetFloat("_Angle", angle);
             TerrainManager.RotationMaterial.SetFloat("_Scale", layerScale);
+            TerrainManager.RotationMaterial.SetFloat("_HeightScale", layerHeightScale);
             TerrainManager.RotationMaterial.SetVector("_Pivot", pivot);
 
             Graphics.Blit(tex, rt, TerrainManager.RotationMaterial, 0);

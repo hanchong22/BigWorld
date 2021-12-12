@@ -506,6 +506,7 @@ namespace SeasunTerrain
         Vector4 rotationPivot = new Vector4(0.5f, 0.5f, 0, 0);
         float layerScale = 1f;
         int rotationTileType = 0;
+        float layerHeightScale = 1f;
 
         private void RotationLayerUI()
         {
@@ -543,7 +544,7 @@ namespace SeasunTerrain
                         {
                             EditorGUILayout.BeginHorizontal();
                             GUILayout.Label("旋转地块：");
-                            this.rotationTileType = EditorGUILayout.Popup(this.rotationTileType, new string[] {"当前地块","所有地块" });
+                            this.rotationTileType = EditorGUILayout.Popup(this.rotationTileType, new string[] { "当前地块", "所有地块" });
                             EditorGUILayout.EndHorizontal();
 
                             EditorGUILayout.BeginHorizontal();
@@ -561,23 +562,25 @@ namespace SeasunTerrain
                             EditorGUILayout.EndHorizontal();
 
                             EditorGUILayout.BeginHorizontal();
-                            GUILayout.Label("位移(x,y)：");                            
+                            GUILayout.Label("位移(x,y)：");
                             float oldOffsetX = this.rotationPivot.z;
                             float oldOffsetY = this.rotationPivot.w;
-                            float offsetX = EditorGUILayout.Slider(this.rotationPivot.z, 0, 1);
-                            float offsetY = EditorGUILayout.Slider(this.rotationPivot.w, 0, 1);
+                            float offsetX = EditorGUILayout.Slider(this.rotationPivot.z, -1, 1);
+                            float offsetY = EditorGUILayout.Slider(this.rotationPivot.w, -1, 1);
                             EditorGUILayout.EndHorizontal();
 
                             this.rotationPivot = new Vector4(rotationPivotX, rotationPivotY, offsetX, offsetY);
 
                             EditorGUILayout.BeginHorizontal();
-                            GUILayout.Label("缩放：");
+                            GUILayout.Label("缩放(面积，高度)：");
                             float oldScale = this.layerScale;
                             this.layerScale = EditorGUILayout.Slider(this.layerScale, 0, 3);
+                            float oldLayerScale = this.layerHeightScale;
+                            this.layerHeightScale = EditorGUILayout.Slider(this.layerHeightScale, 0, 10);
                             EditorGUILayout.EndHorizontal();
 
                             EditorGUILayout.BeginHorizontal();
-                            if (this.rotationAngle != oldAngle || oldScale != this.layerScale || (oldOffsetX != this.rotationPivot.z || oldOffsetY != this.rotationPivot.w))
+                            if (this.rotationAngle != oldAngle || oldScale != this.layerScale || (oldOffsetX != this.rotationPivot.z || oldOffsetY != this.rotationPivot.w) || this.layerHeightScale != oldLayerScale)
                             {
                                 if (TerrainManager.AllTerrain.Count == 0)
                                 {
@@ -588,7 +591,7 @@ namespace SeasunTerrain
                                 {
                                     for (int i = 0; i < TerrainManager.AllTerrain.Count; ++i)
                                     {
-                                        TerrainManager.AllTerrain[i].GetComponent<TerrainExpand>()?.RotaitonLayer(this.m_CurrentHeightMapIdx, this.rotationAngle, this.rotationPivot, this.layerScale, this.m_HeightScale);
+                                        TerrainManager.AllTerrain[i].GetComponent<TerrainExpand>()?.RotaitonLayer(this.m_CurrentHeightMapIdx, this.rotationAngle, this.rotationPivot, this.layerScale, this.layerHeightScale, this.m_HeightScale);
 
                                         if (!this.waitToSaveTerrains.Contains(TerrainManager.AllTerrain[i].GetComponent<TerrainExpand>()))
                                         {
@@ -598,9 +601,9 @@ namespace SeasunTerrain
                                 }
                                 else
                                 {
-                                    if(TerrainManager.CurrentSelectedTerrain.GetComponent<TerrainExpand>())
+                                    if (TerrainManager.CurrentSelectedTerrain.GetComponent<TerrainExpand>())
                                     {
-                                        TerrainManager.CurrentSelectedTerrain.GetComponent<TerrainExpand>()?.RotaitonLayer(this.m_CurrentHeightMapIdx, this.rotationAngle, this.rotationPivot, this.layerScale, this.m_HeightScale);
+                                        TerrainManager.CurrentSelectedTerrain.GetComponent<TerrainExpand>()?.RotaitonLayer(this.m_CurrentHeightMapIdx, this.rotationAngle, this.rotationPivot, this.layerScale, this.layerHeightScale, this.m_HeightScale);
                                     }
 
                                     if (!this.waitToSaveTerrains.Contains(TerrainManager.CurrentSelectedTerrain.GetComponent<TerrainExpand>()))
@@ -614,7 +617,7 @@ namespace SeasunTerrain
                     }
                     else
                     {
-                        EditorGUILayout.HelpBox("基础图层能旋转", MessageType.Warning);
+                        EditorGUILayout.HelpBox("基础图层不能旋转", MessageType.Warning);
                     }
                 }
                 EditorGUILayout.EndVertical();
