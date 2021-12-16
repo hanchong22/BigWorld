@@ -64,7 +64,7 @@ namespace SeasunTerrain
 
         private void OnDrawGizmos()
         {
-           
+
         }
 
         public void InitHeightMaps()
@@ -117,6 +117,10 @@ namespace SeasunTerrain
                     {
                         tex = new Texture2D(this.terrainData.heightmapTexture.width, this.terrainData.heightmapTexture.height, TextureFormat.RGBAHalf, false, true);
                         Graphics.Blit(Texture2D.blackTexture, rt);
+                        CopyRtToTexture2D(rt, tex);
+                        tex.Apply();
+
+                        AssetDatabase.CreateAsset(tex, System.IO.Path.Combine(this.terrainDataPath, $"{this.terrainData.name}_heightmap{i}.asset"));
                     }
                     else
                     {
@@ -170,14 +174,26 @@ namespace SeasunTerrain
                 if (!this.baseHeightMap)
                 {
                     Debug.Log($"Save base heighmap:{baseHeightMapPath}");
-                    this.baseHeightMap = new Texture2D(this.terrainData.heightmapTexture.width, this.terrainData.heightmapTexture.height, TextureFormat.R16, false);
+                    this.baseHeightMap = new Texture2D(this.terrainData.heightmapTexture.width, this.terrainData.heightmapTexture.height, TextureFormat.RGBAHalf, false, true);
 
-                    CopyRtToTexture2D(this.terrainData.heightmapTexture, baseHeightMap);
+                    float[,] baseHeights = this.terrainData.GetHeights(0, 0, this.terrainData.heightmapTexture.width, this.terrainData.heightmapTexture.height);
+
+                    for (int y = 0; y < this.terrainData.heightmapTexture.height; ++y)
+                    {
+                        for (int x = 0; x < this.terrainData.heightmapTexture.width; ++x)
+                        {
+                            this.baseHeightMap.SetPixel(x, y, new Color(baseHeights[y, x], 0, 0, 0));
+                        }
+                    }
+
+                    this.baseHeightMap.Apply();
 
                     AssetDatabase.CreateAsset(this.baseHeightMap, this.baseHeightMapPath);
-                    AssetDatabase.SaveAssets();
+
                 }
             }
+
+            AssetDatabase.SaveAssets();
         }
 
         private void ClearHeightMaps()
@@ -386,7 +402,7 @@ namespace SeasunTerrain
 
                     for (int i = 0; i < this.heightMapList.Count; ++i)
                     {
-                        if (!TerrainManager.SelectedLayer[i])
+                        if (!TerrainManager.SelectedLayer[i] || !this.heightMapList[i])
                         {
                             continue;
                         }
@@ -405,7 +421,7 @@ namespace SeasunTerrain
 
                             deltaHeight = deltaHeight + g / w;
 
-                            addHeight = (-value.z) + deltaHeight;
+                            addHeight += (-value.z) + deltaHeight;
                         }
                         else
                         {
@@ -566,7 +582,7 @@ namespace SeasunTerrain
                     tex.SetPixel(y, x, color);
                 }
             }
-           
+
             if (heighMapID > 0)
             {
                 Graphics.Blit(this.heightMapList[heighMapID], this.rtHeightMapList[heighMapID]);
@@ -584,7 +600,7 @@ namespace SeasunTerrain
         }
 
         public void RotaitonLayer(int heighMapID, float angle, Vector4 pivot, float layerScale, float layerHeightScale, float scale)
-        {           
+        {
             RenderTexture rt;
             Texture2D tex;
 
@@ -600,12 +616,12 @@ namespace SeasunTerrain
                 rt = this.rtHeightMapList[heighMapID];
                 tex = this.heightMapList[heighMapID];
 
-                if(!this.originMapList[heighMapID])
+                if (!this.originMapList[heighMapID])
                 {
                     this.originMapList[heighMapID] = new Texture2D(tex.width, tex.height, tex.format, false);
                     CopyRtToTexture2D(rt, this.originMapList[heighMapID]);
 
-                    AssetDatabase.CreateAsset(this.originMapList[heighMapID], System.IO.Path.Combine(this.terrainDataPath, $"{this.terrainData.name}_heightmap_origin{heighMapID}.asset"));                   
+                    AssetDatabase.CreateAsset(this.originMapList[heighMapID], System.IO.Path.Combine(this.terrainDataPath, $"{this.terrainData.name}_heightmap_origin{heighMapID}.asset"));
                 }
 
                 originTex = this.originMapList[heighMapID];
