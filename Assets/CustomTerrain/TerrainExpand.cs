@@ -18,6 +18,8 @@ namespace SeasunTerrain
     {
 #if UNITY_EDITOR
 
+        static float kMaxHeight = (32766.0f / 65535.0f);
+
         private List<Texture2D> heightMapList;
         private List<Texture2D> originMapList;
 
@@ -173,7 +175,6 @@ namespace SeasunTerrain
                 this.baseHeightMap = AssetDatabase.LoadAssetAtPath<Texture2D>(this.baseHeightMapPath);
                 if (!this.baseHeightMap)
                 {
-                    Debug.Log($"Save base heighmap:{baseHeightMapPath}");
                     this.baseHeightMap = new Texture2D(this.terrainData.heightmapTexture.width, this.terrainData.heightmapTexture.height, TextureFormat.RGBAHalf, false, true);
 
                     float[,] baseHeights = this.terrainData.GetHeights(0, 0, this.terrainData.heightmapTexture.width, this.terrainData.heightmapTexture.height);
@@ -298,7 +299,7 @@ namespace SeasunTerrain
             GL.LoadPixelMatrix(0, targetRt.width, 0, targetRt.height);
             {
                 FilterMode oldFilterMode = sourceRt.filterMode;
-                sourceRt.filterMode = FilterMode.Point;
+                sourceRt.filterMode = FilterMode.Bilinear;
 
                 blitMaterial.SetTexture("_MainTex", sourceRt);
                 // blitMaterial.SetTexture("_OldHeightMap", oldTerrainHeight);
@@ -382,7 +383,7 @@ namespace SeasunTerrain
             this.originMapList.RemoveAt(idx);
         }
 
-        public void ReLoadLayer(float scale, bool limitHeightBetweenBrush = true)
+        public void ReLoadLayer(float scale)
         {
             if (!this.baseHeightMap)
             {
@@ -408,35 +409,24 @@ namespace SeasunTerrain
                         }
 
                         Vector4 value = this.heightMapList[i].GetPixel(x, y);
+                        float height = value.x + value.y;
 
-                        if (value.w > 0)
-                        {
-                            float deltaHeight = addHeight - (-value.z);
+                        if (value.z == 0)
+                        {                            
+                            if (height > 0)
+                            {
+                                height = Mathf.Clamp(height * scale, 0, targetHeight);
+                            }
+                            else
+                            {
+                                height = Mathf.Clamp(height * scale, -targetHeight, 0);
+                            }
+                        }                       
 
-                            float p = Mathf.Clamp01(value.w);
-                            float w = (1.0f - p) / (p + 0.000001f);
-                            //float w = (1.0f - p * p) / (p + 0.000001f);
-                            float fx = Mathf.Clamp(w * deltaHeight, -1.0f, 1.0f);
-                            float g = fx * (0.5f * fx * Mathf.Sign(fx) - 1.0f);
-
-                            deltaHeight = deltaHeight + g / w;
-
-                            addHeight += (-value.z) + deltaHeight;
-                        }
-                        else
-                        {
-                            addHeight += value.x + value.y;
-                        }
+                        addHeight += height;
                     }
 
-                    if (limitHeightBetweenBrush)
-                    {
-                        heights[y, x] = Mathf.Clamp(addHeight * scale, 0, targetHeight);
-                    }
-                    else
-                    {
-                        heights[y, x] = Mathf.Clamp(addHeight * scale, 0, 1);
-                    }
+                    heights[y, x] = Mathf.Clamp(addHeight * scale, 0, 1);
                 }
             }
 

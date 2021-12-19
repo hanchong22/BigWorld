@@ -23,33 +23,26 @@ Shader "Hidden/TerrainEngine/HeightSubtraction" {
 
             struct appdata_t {
                 float4 vertex : POSITION;
-                float2 texcoord : TEXCOORD0;
-                UNITY_VERTEX_INPUT_INSTANCE_ID
+                float2 texcoord : TEXCOORD0;                
             };
 
             struct v2f {
                 float4 vertex : SV_POSITION;
-                float2 texcoord : TEXCOORD0;
-                UNITY_VERTEX_OUTPUT_STEREO
+                float2 texcoord : TEXCOORD0;                
             };
 
             v2f vert (appdata_t v)
             {
-                v2f o;
-                UNITY_SETUP_INSTANCE_ID(v);
-                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
+                v2f o;               
                 o.vertex = UnityObjectToClipPos(v.vertex);
                 o.texcoord = TRANSFORM_TEX(v.texcoord.xy, _MainTex);
                 return o;
             }
 
-            half4 frag (v2f i) : SV_Target
-            {
-                UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(i);
+            float4 frag (v2f i) : SV_Target
+            {                
                 float4 map = tex2D(_MainTex, i.texcoord);
-                float height = map.r;              
-
-               return half4(height,height, map.b, map.a );
+                return float4(map.x , map.x, map.z, map.w );
             }
             ENDCG
 

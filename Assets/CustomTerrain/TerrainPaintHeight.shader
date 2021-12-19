@@ -73,10 +73,12 @@
                 // out of bounds multiplier
                 float oob = all(saturate(brushUV) == brushUV) ? 1.0f : 0.0f;
 
-                float height = UnpackHeightmap(tex2D(_MainTex, heightmapUV));
-                float brushShape = oob * UnpackHeightmap(tex2D(_BrushTex, brushUV));
+                float originHeight = tex2D(_MainTex, heightmapUV).r;
+                float brushShape = oob * tex2D(_BrushTex, brushUV).r;
 
-                return PackHeightmap(clamp(height + BRUSH_STRENGTH * brushShape, 0, kMaxHeight));
+                float height = clamp(originHeight + BRUSH_STRENGTH * brushShape, 0, kMaxHeight);
+                
+                return float4(height, 0, 0.1, 0);
             }
             ENDCG
         }
@@ -168,20 +170,9 @@
                     deltaHeight = deltaHeight + g / w;
 
                     height = targetHeight + deltaHeight;
-
-                    if(targetHeight < 0 )
-                    {
-                        return float4(height, brushStrength, -targetHeight, 0);
-                    }
-                    else
-                    {
-                    return float4(height, 0, 0, 0);
-                    }
                 }
-                else
-                {
-                   return float4(height, 0, 0, 0);
-                }
+               
+                return float4(height, 0, 0, 0);
             }
             ENDCG
         }
