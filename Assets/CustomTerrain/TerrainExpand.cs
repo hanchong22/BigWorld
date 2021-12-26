@@ -23,7 +23,11 @@ namespace SeasunTerrain
         private List<Texture2D> heightMapList;
         private List<Texture2D> originMapList;
 
+        private List<Texture2D> holeMapList;
+
+
         private Texture2D baseHeightMap;
+        private Texture2D baseHoleMap;
 
         private TerrainData terrainData;
         private Terrain terrain;
@@ -35,6 +39,7 @@ namespace SeasunTerrain
 
 
         public List<RenderTexture> rtHeightMapList { get; private set; } = new List<RenderTexture>();
+        public List<RenderTexture> rtHoleMapList { get; private set; } = new List<RenderTexture>();
 
         public Texture2D BaseHeightMap { get => this.baseHeightMap; }
 
@@ -83,17 +88,30 @@ namespace SeasunTerrain
                 this.originMapList = new List<Texture2D>();
             }
 
+            if (this.holeMapList == null)
+            {
+                this.holeMapList = new List<Texture2D>();
+            }
+
             for (int i = 0; i < TerrainManager.HeightMapNumber; ++i)
             {
                 RenderTexture rt = null;
                 Texture2D tex = null;
                 Texture2D texOrigin = null;
 
+                RenderTexture rtHole = null;
+                Texture2D holeTex = null;
+
                 this.changedIds.Add(false);
 
                 if (this.heightMapList.Count > i)
                 {
                     tex = this.heightMapList[i];
+                }
+
+                if (this.holeMapList.Count > i)
+                {
+                    holeTex = this.holeMapList[i];
                 }
 
                 if (this.originMapList.Count > i)
@@ -106,9 +124,19 @@ namespace SeasunTerrain
                     rt = this.rtHeightMapList[i];
                 }
 
+                if (this.rtHoleMapList.Count > i)
+                {
+                    rtHole = this.rtHoleMapList[i];
+                }
+
                 if (!rt)
                 {
                     rt = RenderTexture.GetTemporary(this.terrainData.heightmapTexture.width, this.terrainData.heightmapTexture.height, 0, RenderTextureFormat.ARGBHalf);
+                }
+
+                if (!rtHole)
+                {
+                    rtHole = RenderTexture.GetTemporary(this.terrainData.holesResolution, this.terrainData.holesResolution, 0, Terrain.holesRenderTextureFormat);
                 }
 
                 if (!tex)
@@ -134,6 +162,28 @@ namespace SeasunTerrain
                     Graphics.Blit(tex, rt);
                 }
 
+                if (!holeTex)
+                {
+                    holeTex = AssetDatabase.LoadAssetAtPath<Texture2D>(System.IO.Path.Combine(this.terrainDataPath, $"{this.terrainData.name}_hole{i}.asset"));
+                    if (!holeTex)
+                    {
+                        holeTex = new Texture2D(this.terrainData.holesResolution, this.terrainData.holesResolution, TextureFormat.R8, false);
+                        Graphics.Blit(Texture2D.blackTexture, rtHole);
+                        CopyRtToTexture2D(rtHole, holeTex);
+                        holeTex.Apply();
+
+                        AssetDatabase.CreateAsset(holeTex, System.IO.Path.Combine(this.terrainDataPath, $"{this.terrainData.name}_hole{i}.asset"));
+                    }
+                    else
+                    {
+                        Graphics.Blit(holeTex, rtHole);
+                    }
+                }
+                else
+                {
+                    Graphics.Blit(holeTex, rtHole);
+                }
+
                 if (!texOrigin && File.Exists(System.IO.Path.Combine(this.terrainDataPath, $"{this.terrainData.name}_heightmap_origin{i}.asset")))
                 {
                     texOrigin = AssetDatabase.LoadAssetAtPath<Texture2D>(System.IO.Path.Combine(this.terrainDataPath, $"{this.terrainData.name}_heightmap_origin{i}.asset"));
@@ -149,6 +199,15 @@ namespace SeasunTerrain
                     this.rtHeightMapList.Add(rt);
                 }
 
+                if (this.rtHoleMapList.Count > i)
+                {
+                    this.rtHoleMapList[i] = rtHole;
+                }
+                else
+                {
+                    rtHoleMapList.Add(rtHole);
+                }
+
                 if (this.heightMapList.Count > i)
                 {
                     this.heightMapList[i] = tex;
@@ -157,6 +216,16 @@ namespace SeasunTerrain
                 {
                     this.heightMapList.Add(tex);
                 }
+
+                if (this.holeMapList.Count > i)
+                {
+                    this.holeMapList[i] = holeTex;
+                }
+                else
+                {
+                    this.holeMapList.Add(holeTex);
+                }
+
 
                 if (this.originMapList.Count > i)
                 {
@@ -194,6 +263,29 @@ namespace SeasunTerrain
                 }
             }
 
+            if (!this.baseHoleMap)
+            {
+                this.baseHoleMap = AssetDatabase.LoadAssetAtPath<Texture2D>(System.IO.Path.Combine(this.terrainDataPath, $"{this.terrainData.name}_baseHoleMap.asset"));
+                if (!this.baseHoleMap)
+                {
+                    this.baseHoleMap = new Texture2D(this.terrainData.holesResolution, this.terrainData.holesResolution, TextureFormat.R8, false, false);
+                    bool[,] baseHoles = this.terrainData.GetHoles(0, 0, this.terrainData.holesResolution, this.terrainData.holesResolution);
+
+
+                    for (int y = 0; y < this.terrainData.holesResolution; ++y)
+                    {
+                        for (int x = 0; x < this.terrainData.holesResolution; ++x)
+                        {
+                            this.baseHoleMap.SetPixel(x, y, new Color(baseHoles[y, x] ? 0 : 1, 0, 0, 0));
+                        }
+                    }
+
+                    this.baseHoleMap.Apply();
+
+                    AssetDatabase.CreateAsset(this.baseHoleMap, System.IO.Path.Combine(this.terrainDataPath, $"{this.terrainData.name}_baseHoleMap.asset"));
+                }
+            }
+
             AssetDatabase.SaveAssets();
         }
 
@@ -212,6 +304,19 @@ namespace SeasunTerrain
                 this.rtHeightMapList.Clear();
             }
 
+            if (this.rtHoleMapList != null)
+            {
+                for (int i = 0; i < this.rtHoleMapList.Count; ++i)
+                {
+                    if (this.rtHoleMapList[i])
+                    {
+                        RenderTexture.ReleaseTemporary(this.rtHoleMapList[i]);
+                    }
+                }
+
+                this.rtHoleMapList.Clear();
+            }
+
             if (this.heightMapList != null)
             {
                 for (int i = 0; i < this.heightMapList.Count; ++i)
@@ -223,6 +328,19 @@ namespace SeasunTerrain
                 }
 
                 this.heightMapList.Clear();
+            }
+
+            if (this.holeMapList != null)
+            {
+                for (int i = 0; i < this.holeMapList.Count; ++i)
+                {
+                    if (this.holeMapList[i])
+                    {
+                        GameObject.DestroyImmediate(this.holeMapList[i]);
+                    }
+                }
+
+                this.holeMapList.Clear();
             }
 
             if (this.originMapList != null)
@@ -302,7 +420,6 @@ namespace SeasunTerrain
                 sourceRt.filterMode = FilterMode.Bilinear;
 
                 blitMaterial.SetTexture("_MainTex", sourceRt);
-                // blitMaterial.SetTexture("_OldHeightMap", oldTerrainHeight);
                 blitMaterial.SetInt("_HeightNormal", heightNormal);
                 blitMaterial.SetPass(0);
                 TerrainManager.DrawQuad(dstPixels, sourcePixels, sourceRt);
@@ -314,6 +431,17 @@ namespace SeasunTerrain
             targetTex.ReadPixels(new Rect(0, 0, targetRt.width, targetRt.height), 0, 0);
             targetTex.Apply();
             RenderTexture.active = oldRT;
+        }
+
+        public void OnPainHole(int heightMapIdx, UnityEngine.Experimental.TerrainAPI.PaintContext editContext, int tileIndex)
+        {
+            Material blitMaterial = TerrainManager.GetHeightSubtractionMat();
+            blitMaterial.SetTexture("_MainTex", this.terrain.terrainData.holesTexture);
+            Graphics.Blit(this.terrain.terrainData.holesTexture, this.rtHeightMapList[0], blitMaterial, 1);
+            CopyRtToTexture2D(this.rtHeightMapList[0], this.baseHoleMap);
+            this.baseHeightMap.Apply();
+
+            AssetDatabase.SaveAssets();
         }
 
         public void SaveData()
@@ -334,6 +462,19 @@ namespace SeasunTerrain
                         AssetDatabase.ImportAsset(path);
                         this.heightMapList[i] = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
                     }
+
+                    string holePath = System.IO.Path.Combine(this.terrainDataPath, $"{this.terrainData.name}_hole{i}.asset");
+
+                    if (File.Exists(holePath))
+                    {
+                        AssetDatabase.SaveAssets();
+                    }
+                    else
+                    {
+                        AssetDatabase.CreateAsset(this.holeMapList[i], holePath);
+                        AssetDatabase.ImportAsset(holePath);
+                        this.holeMapList[i] = AssetDatabase.LoadAssetAtPath<Texture2D>(holePath);
+                    }
                 }
             }
         }
@@ -348,13 +489,37 @@ namespace SeasunTerrain
             Texture2D waitToDelTex = this.heightMapList[idx];
             Texture2D waitToDelTex2 = this.originMapList[idx];
             RenderTexture waitToDelRt = this.rtHeightMapList[idx];
+            Texture2D waitToDelHole = this.holeMapList[idx];
+            RenderTexture waitToDelRtHole = this.rtHoleMapList[idx];
 
             string path = AssetDatabase.GetAssetPath(waitToDelTex);
             string path2 = waitToDelTex2 ? AssetDatabase.GetAssetPath(waitToDelTex2) : null;
+            string path3 = waitToDelHole ? AssetDatabase.GetAssetPath(waitToDelHole) : null;
 
             AssetDatabase.DeleteAsset(path);
             GameObject.DestroyImmediate(waitToDelTex);
             RenderTexture.ReleaseTemporary(waitToDelRt);
+
+            if (waitToDelRtHole)
+            {
+                RenderTexture.ReleaseTemporary(waitToDelRtHole);
+            }
+
+
+            if (waitToDelHole)
+            {
+                GameObject.DestroyImmediate(waitToDelHole);
+                AssetDatabase.DeleteAsset(path3);
+
+                for (int i = idx + 1; i < this.holeMapList.Count; ++i)
+                {
+                    string tmpPath = AssetDatabase.GetAssetPath(this.holeMapList[i]);
+                    AssetDatabase.RenameAsset(tmpPath, path3);
+                    this.holeMapList[i] = AssetDatabase.LoadAssetAtPath<Texture2D>(path3);
+                    path3 = tmpPath;
+                }
+            }
+
 
             if (waitToDelTex2)
             {
@@ -395,6 +560,7 @@ namespace SeasunTerrain
             float targetHeight = TerrainManager.BrashTargetHeight / terrain.terrainData.size.y;
 
             float[,] heights = new float[this.baseHeightMap.width, this.baseHeightMap.height];
+
             for (int y = 0; y < this.baseHeightMap.height; ++y)
             {
                 for (int x = 0; x < this.baseHeightMap.width; ++x)
@@ -412,7 +578,7 @@ namespace SeasunTerrain
                         float height = value.x + value.y;
 
                         if (value.z == 0)
-                        {                            
+                        {
                             if (height > 0)
                             {
                                 height = Mathf.Clamp(height * scale, 0, targetHeight);
@@ -421,7 +587,7 @@ namespace SeasunTerrain
                             {
                                 height = Mathf.Clamp(height * scale, -targetHeight, 0);
                             }
-                        }                       
+                        }
 
                         addHeight += height;
                     }
@@ -431,6 +597,32 @@ namespace SeasunTerrain
             }
 
             terrainData.SetHeights(0, 0, heights);
+
+            bool[,] holes = new bool[this.terrainData.holesResolution, this.terrainData.holesResolution];
+            for (int y = 0; y < this.terrainData.holesResolution; ++y)
+            {
+                for (int x = 0; x < this.terrainData.holesResolution; ++x)
+                {
+                    bool hole = TerrainManager.IsBaseLayerEnable ? this.baseHoleMap.GetPixel(x, y).r < 0.5f : true;
+
+                    for (int i = 0; i < this.holeMapList.Count; ++i)
+                    {
+                        if (TerrainManager.SelectedLayer.Length <= i || !TerrainManager.SelectedLayer[i] || !this.holeMapList[i])
+                        {
+                            continue;
+                        }
+
+                        Vector4 value = this.holeMapList[i].GetPixel(x, y);
+                        bool lb = value.x < 0.5f;
+
+                        hole = lb && hole;
+                    }
+
+                    holes[y, x] = hole;
+                }
+            }
+
+            terrainData.SetHoles(0, 0, holes);
         }
 
         public bool ReimportHeightmap(int heighMapID, Texture2D newTex, float scale, int limitType)

@@ -73,9 +73,7 @@ namespace SeasunTerrain
                 case PaintTypeEnum.SetHeight:
                     return this.GetStyles().description.text;
                 case PaintTypeEnum.SmoothHeight:
-                    return "平滑地面高度";
-                case PaintTypeEnum.Stamp:
-                    return "左键将笔刷印制到地面\n\n按住Control键通过滚轮调整高度\n按住Shift键反向印制";
+                    return "平滑地面高度";                
             }
 
             return "请选择一种笔刷";
@@ -152,48 +150,64 @@ namespace SeasunTerrain
             {
                 return false;
             }
-
-            BrushTransform brushXform = TerrainPaintUtility.CalculateBrushTransform(terrain, editContext.uv, editContext.brushSize, 0.0f);
-
-            PaintContextExp paintContextTmp = TerrainManager.BeginPaintHeightMapLyaer(terrain, brushXform.GetBrushXYBounds(), this.m_CurrentHeightMapIdx);
+            
             if (CurrentPaintType == PaintTypeEnum.SetHeight)
             {
+                BrushTransform brushXform = TerrainPaintUtility.CalculateBrushTransform(terrain, editContext.uv, editContext.brushSize, 0.0f);
+                PaintContextExp paintContextTmp = TerrainManager.BeginPaintHeightMapLyaer(terrain, brushXform.GetBrushXYBounds(), this.m_CurrentHeightMapIdx);
                 ApplyBrushFromBaseHeightInternal(paintContextTmp, editContext.brushStrength, editContext.brushTexture, brushXform, terrain);
-            }
-            //else if(CurrentPaintType == PaintTypeEnum.PaintHeight)
-            //{
-            //    ApplyBrushHeightFromBaseHeightInternal(paintContextTmp, editContext.brushStrength, editContext.brushTexture, brushXform, terrain);
-            //}
 
-            for (int i = 0; i < paintContextTmp.terrainCount; ++i)
-            {
-                TerrainExpand terrainExpandData = paintContextTmp.GetTerrain(i).gameObject.GetComponent<TerrainExpand>();
-                if (!terrainExpandData)
+                for (int i = 0; i < paintContextTmp.terrainCount; ++i)
                 {
-                    terrainExpandData = paintContextTmp.GetTerrain(i).gameObject.AddComponent<TerrainExpand>();
+                    TerrainExpand terrainExpandData = paintContextTmp.GetTerrain(i).gameObject.GetComponent<TerrainExpand>();
+                    if (!terrainExpandData)
+                    {
+                        terrainExpandData = paintContextTmp.GetTerrain(i).gameObject.AddComponent<TerrainExpand>();
+                    }
+
+                    terrainExpandData.OnPaint(this.m_CurrentHeightMapIdx, paintContextTmp, i, (Event.current.shift ? -1 : 1));
+
+                    if (!this.waitToSaveTerrains.Contains(terrainExpandData))
+                    {
+                        this.waitToSaveTerrains.Add(terrainExpandData);
+                    }
                 }
 
-                terrainExpandData.OnPaint(this.m_CurrentHeightMapIdx, paintContextTmp, i, (Event.current.shift ? -1 : 1));
+                paintContextTmp.Cleanup();
 
-                if (!this.waitToSaveTerrains.Contains(terrainExpandData))
-                {
-                    this.waitToSaveTerrains.Add(terrainExpandData);
-                }
-            }
-
-            paintContextTmp.Cleanup();
-
-            PaintContext paintContext = TerrainPaintUtility.BeginPaintHeightmap(terrain, brushXform.GetBrushXYBounds());
-            if (CurrentPaintType == PaintTypeEnum.SetHeight)
-            {
+                PaintContext paintContext = TerrainPaintUtility.BeginPaintHeightmap(terrain, brushXform.GetBrushXYBounds());
                 ApplyBrushInternal(paintContext, editContext.brushStrength, editContext.brushTexture, brushXform);
+                TerrainPaintUtility.EndPaintHeightmap(paintContext, "Terrain Paint - CustomLayerHeight");
             }
-            //else if (CurrentPaintType == PaintTypeEnum.PaintHeight)
-            //{
-            //    ApplyBrushHeightInternal(paintContext, editContext.brushStrength, editContext.brushTexture, brushXform);
-            //}
+            else if(CurrentPaintType == PaintTypeEnum.PaintHoles)
+            {
+                Vector2 halfTexelOffset = new Vector2(0.5f / terrain.terrainData.holesResolution, 0.5f / terrain.terrainData.holesResolution);
+                BrushTransform brushXform = TerrainPaintUtility.CalculateBrushTransform(terrain, editContext.uv - halfTexelOffset, editContext.brushSize, 0.0f);
 
-            TerrainPaintUtility.EndPaintHeightmap(paintContext, "Terrain Paint - CustomLayerHeight");
+                PaintContext paintContext = TerrainPaintUtility.BeginPaintHoles(terrain, brushXform.GetBrushXYBounds());
+                Material mat = ApplyBrushHoleFromBaseInternal(paintContext, editContext.brushStrength, editContext.brushTexture, brushXform);               
+
+                TerrainPaintUtility.EndPaintHoles(paintContext, "Terrain Paint - Paint Holes");
+                for (int i = 0; i < paintContext.terrainCount; ++i)
+                {
+                    TerrainExpand terrainExpandData = paintContext.GetTerrain(i).gameObject.GetComponent<TerrainExpand>();
+                    if (!terrainExpandData)
+                    {
+                        terrainExpandData = paintContext.GetTerrain(i).gameObject.AddComponent<TerrainExpand>();
+                    }
+
+                    terrainExpandData.OnPainHole(this.m_CurrentHeightMapIdx, paintContext, i);
+
+                    if (!this.waitToSaveTerrains.Contains(terrainExpandData))
+                    {
+                        this.waitToSaveTerrains.Add(terrainExpandData);
+                    }
+                }
+
+               
+            }           
+
+            
 
             return true;
         }
@@ -231,6 +245,8 @@ namespace SeasunTerrain
                 TerrainPaintUtilityEditor.DrawBrushPreview(
                     paintContext, TerrainPaintUtilityEditor.BrushPreview.SourceRenderTexture, editContext.brushTexture, brushXform, material, 0);
 
+                if (CurrentPaintType == PaintTypeEnum.SetHeight)
+
                 // 显示预览
                 {
                     //if(CurrentPaintType == PaintTypeEnum.PaintHeight)
@@ -250,6 +266,10 @@ namespace SeasunTerrain
                     TerrainPaintUtilityEditor.DrawBrushPreview(
                         paintContext, TerrainPaintUtilityEditor.BrushPreview.DestinationRenderTexture, editContext.brushTexture, brushXform, material, 1);
                 }
+                else if(CurrentPaintType == PaintTypeEnum.PaintHoles)
+                {
+
+                }
 
                 TerrainPaintUtility.ReleaseContextResources(paintContext);
             }
@@ -267,6 +287,8 @@ namespace SeasunTerrain
 
         public override void OnInspectorGUI(Terrain terrain, IOnInspectorGUI editContext)
         {
+            int textureRez = terrain.terrainData.heightmapResolution;
+
             if (this.isCreateTerrainMode && m_CreateTool != null)
             {
                 GUILayout.BeginVertical(EditorStyles.helpBox);
@@ -323,9 +345,10 @@ namespace SeasunTerrain
             {
 
             }
-            else if(CustomLayerHeightPaint.CurrentPaintType == PaintTypeEnum.Stamp)
+           
+            else if(CustomLayerHeightPaint.CurrentPaintType == PaintTypeEnum.PaintHoles)
             {
-
+               
             }
 
             EditorGUILayout.EndVertical();
@@ -356,7 +379,7 @@ namespace SeasunTerrain
             }
 
             // 引擎内置画笔功能
-            int textureRez = terrain.terrainData.heightmapResolution;
+
             editContext.ShowBrushesGUI(5, BrushGUIEditFlags.All, textureRez);
             base.OnInspectorGUI(terrain, editContext);
         }
