@@ -71,8 +71,27 @@ namespace SeasunTerrain
             return GetDefaultHeightMap(t);
         }
 
+        public static RenderTexture GetHoleMapByIdx(Terrain t, int layerIdx)
+        {
+            for (int i = 0; i < TerrainManager.AllTerrain.Count; ++i)
+            {
+                if (TerrainManager.AllTerrain[i] == t)
+                {
+                    TerrainExpand te = TerrainManager.AllTerrain[i].gameObject.GetComponent<TerrainExpand>();
+                    if (te.rtHeightMapList == null || te.rtHeightMapList.Count <= layerIdx)
+                    { 
+                        te.InitHeightMaps();
+                    }
+
+                    return te.rtHoleMapList[layerIdx];
+                }
+            }
+
+            return GetDefaultHoleMap(t);
+        }
 
         private static RenderTexture defaultHeightMap = null;
+        private static RenderTexture defaultHoleMap = null;
 
         public static RenderTexture GetDefaultHeightMap(Terrain t)
         {
@@ -87,6 +106,21 @@ namespace SeasunTerrain
             }
 
             return TerrainManager.defaultHeightMap;
+        }
+
+        public static RenderTexture GetDefaultHoleMap(Terrain t)
+        {
+            if (!TerrainManager.defaultHoleMap || TerrainManager.defaultHoleMap.width != t.terrainData.holesResolution || TerrainManager.defaultHeightMap.height != t.terrainData.holesResolution)
+            {
+                if (TerrainManager.defaultHoleMap)
+                {
+                    RenderTexture.ReleaseTemporary(TerrainManager.defaultHoleMap);
+                }
+
+                TerrainManager.defaultHoleMap = RenderTexture.GetTemporary(t.terrainData.holesResolution, t.terrainData.holesResolution, 0, Terrain.holesRenderTextureFormat);
+            }
+
+            return TerrainManager.defaultHoleMap;
         }
 
         private static Material heightSubtractionMat = null;
@@ -136,6 +170,16 @@ namespace SeasunTerrain
 
             //将地型高度图与笔刷相交的区域blit到笔刷中，用于后续的高度计算
             ctx.GatherInitHeightmap(currentLayer);
+            return ctx;
+        }
+
+        public static PaintContextExp BeginPaintHolesMapLayer(Terrain terrain, Rect boundsInTerrainSpace, int currentLayer, int extraBorderPixels = 0)
+        {
+            int holesResolution = terrain.terrainData.holesResolution;
+            PaintContextExp ctx = InitializePaintContext(terrain, holesResolution, holesResolution, Terrain.holesRenderTextureFormat, boundsInTerrainSpace, extraBorderPixels, false);
+
+            //将原HoleMap与笔刷相交的区域blit到笔刷中，用于后续的Hole计算
+            ctx.GatherHoles(currentLayer);
             return ctx;
         }
 

@@ -81,5 +81,13 @@ namespace UnityEngine.Experimental.TerrainAPI
             RenderTexture.active = oldRenderTexture;
         }
 
+        public void GatherHoles(int layerIdx)
+        {
+            GatherInternalExp(
+                t => TerrainManager.GetHoleMapByIdx(t, layerIdx),
+                new Color(0.0f, 0.0f, 0.0f, 0.0f),
+                "PaintContext.GatherHoles");
+        }
+
     }
 }

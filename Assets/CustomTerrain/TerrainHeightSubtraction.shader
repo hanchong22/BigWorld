@@ -81,7 +81,7 @@ Shader "Hidden/TerrainEngine/HeightSubtraction" {
             float4 frag (v2f i) : SV_Target
             {                
                 float4 map = tex2D(_MainTex, i.texcoord);
-                return  float4(step(map.r, 0.5),0,0,0);
+                return  float4(step(0.1, map.r),0,0,0);
             }
             ENDCG
 

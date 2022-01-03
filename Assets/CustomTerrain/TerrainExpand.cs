@@ -436,12 +436,47 @@ namespace SeasunTerrain
         public void OnPainHole(int heightMapIdx, UnityEngine.Experimental.TerrainAPI.PaintContext editContext, int tileIndex)
         {
             Material blitMaterial = TerrainManager.GetHeightSubtractionMat();
-            blitMaterial.SetTexture("_MainTex", this.terrain.terrainData.holesTexture);
-            Graphics.Blit(this.terrain.terrainData.holesTexture, this.rtHeightMapList[0], blitMaterial, 1);
-            CopyRtToTexture2D(this.rtHeightMapList[0], this.baseHoleMap);
-            this.baseHeightMap.Apply();
 
-            AssetDatabase.SaveAssets();
+            this.CheckOrInitData();
+
+            blitMaterial.SetFloat("_Height_Offset", (editContext.heightWorldSpaceMin - this.terrain.GetPosition().y) / this.terrain.terrainData.size.y * TerrainExpand.kNormalizedHeightScale);
+            blitMaterial.SetFloat("_Height_Scale", editContext.heightWorldSpaceSize / this.terrain.terrainData.size.y);
+
+            RenderTexture oldRT = RenderTexture.active;
+            RenderTexture targetRt = null;
+            RenderTexture sourceRt = editContext.destinationRenderTexture;      //已经绘制结果：原地型hole + 笔刷   
+                                                                                // RenderTexture oldTerrainHeight = editContext.sourceRenderTexture;   //原地型高度
+            Texture2D targetTex = null;
+
+            this.CheckOrInitData();
+
+            this.dstPixels = editContext.GetClippedPixelRectInTerrainPixels(tileIndex);         //画笔触及的区域（地型的相对坐标）
+            this.sourcePixels = editContext.GetClippedPixelRectInRenderTexturePixels(tileIndex); //画笔与当前地型块重叠的区域 （相对于画笔图章）
+
+            targetRt = this.rtHoleMapList[heightMapIdx];
+            targetTex = this.holeMapList[heightMapIdx];
+            this.changedIds[heightMapIdx] = true;
+
+
+            RenderTexture.active = targetRt;
+
+            GL.PushMatrix();
+            GL.LoadPixelMatrix(0, targetRt.width, 0, targetRt.height);
+            {
+                FilterMode oldFilterMode = sourceRt.filterMode;
+                sourceRt.filterMode = FilterMode.Bilinear;
+
+                blitMaterial.SetTexture("_MainTex", sourceRt);                
+                blitMaterial.SetPass(1);
+                TerrainManager.DrawQuad(dstPixels, sourcePixels, sourceRt);
+
+                sourceRt.filterMode = oldFilterMode;
+            }
+            GL.PopMatrix();
+
+            targetTex.ReadPixels(new Rect(0, 0, targetRt.width, targetRt.height), 0, 0);
+            targetTex.Apply();
+            RenderTexture.active = oldRT;
         }
 
         public void SaveData()
@@ -613,7 +648,7 @@ namespace SeasunTerrain
                         }
 
                         Vector4 value = this.holeMapList[i].GetPixel(x, y);
-                        bool lb = value.x < 0.5f;
+                        bool lb = value.x < 0.5f;                       
 
                         hole = lb && hole;
                     }

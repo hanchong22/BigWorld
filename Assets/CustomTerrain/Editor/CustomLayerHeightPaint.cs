@@ -186,25 +186,30 @@ namespace SeasunTerrain
                 Vector2 halfTexelOffset = new Vector2(0.5f / terrain.terrainData.holesResolution, 0.5f / terrain.terrainData.holesResolution);
                 BrushTransform brushXform = TerrainPaintUtility.CalculateBrushTransform(terrain, editContext.uv - halfTexelOffset, editContext.brushSize, 0.0f);
 
-                PaintContext paintContext = TerrainPaintUtility.BeginPaintHoles(terrain, brushXform.GetBrushXYBounds());
-                Material mat = ApplyBrushHoleFromBaseInternal(paintContext, editContext.brushStrength, editContext.brushTexture, brushXform);
+                PaintContextExp paintContextTmp = TerrainManager.BeginPaintHolesMapLayer(terrain, brushXform.GetBrushXYBounds(), this.m_CurrentHeightMapIdx);              
+                Material mat = ApplyBrushHoleFromBaseInternal(paintContextTmp, editContext.brushStrength, editContext.brushTexture, brushXform);
 
-                TerrainPaintUtility.EndPaintHoles(paintContext, "Terrain Paint - Paint Holes");
-                for (int i = 0; i < paintContext.terrainCount; ++i)
+                for (int i = 0; i < paintContextTmp.terrainCount; ++i)
                 {
-                    TerrainExpand terrainExpandData = paintContext.GetTerrain(i).gameObject.GetComponent<TerrainExpand>();
+                    TerrainExpand terrainExpandData = paintContextTmp.GetTerrain(i).gameObject.GetComponent<TerrainExpand>();
                     if (!terrainExpandData)
                     {
-                        terrainExpandData = paintContext.GetTerrain(i).gameObject.AddComponent<TerrainExpand>();
+                        terrainExpandData = paintContextTmp.GetTerrain(i).gameObject.AddComponent<TerrainExpand>();
                     }
 
-                    terrainExpandData.OnPainHole(this.m_CurrentHeightMapIdx, paintContext, i);
+                    terrainExpandData.OnPainHole(this.m_CurrentHeightMapIdx, paintContextTmp, i);
 
                     if (!this.waitToSaveTerrains.Contains(terrainExpandData))
                     {
                         this.waitToSaveTerrains.Add(terrainExpandData);
                     }
                 }
+
+                paintContextTmp.Cleanup();
+
+                PaintContext paintContext = TerrainPaintUtility.BeginPaintHoles(terrain, brushXform.GetBrushXYBounds());
+                ApplyBrushHole(paintContext, editContext.brushStrength, editContext.brushTexture, brushXform);
+                TerrainPaintUtility.EndPaintHoles(paintContext, "Terrain Paint - Paint Holes");
             }
             else if(CurrentPaintType == PaintTypeEnum.SmoothHeight)
             {
