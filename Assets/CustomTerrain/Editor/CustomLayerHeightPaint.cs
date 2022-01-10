@@ -214,10 +214,26 @@ namespace SeasunTerrain
             else if(CurrentPaintType == PaintTypeEnum.SmoothHeight)
             {
                 BrushTransform brushXform = TerrainPaintUtility.CalculateBrushTransform(terrain, editContext.uv, editContext.brushSize, 0.0f);
-                PaintContext paintContext = TerrainPaintUtility.BeginPaintHeightmap(terrain, brushXform.GetBrushXYBounds());
+                PaintContextExp paintContextTmp = TerrainManager.BeginPaintHeightMapLyaer(terrain, brushXform.GetBrushXYBounds(), this.m_CurrentHeightMapIdx);                
+                ApplyBrushSmoothHeightFromBaseInternal(paintContextTmp, editContext.brushStrength, editContext.brushTexture, brushXform);
 
-                ApplyBrushSmoothHeightFromBaseInternal(paintContext, editContext.brushStrength, editContext.brushTexture, brushXform);
-                TerrainPaintUtility.EndPaintHeightmap(paintContext, "Terrain Paint - Smooth Height");
+                for (int i = 0; i < paintContextTmp.terrainCount; ++i)
+                {
+                    TerrainExpand terrainExpandData = paintContextTmp.GetTerrain(i).gameObject.GetComponent<TerrainExpand>();
+                    if (!terrainExpandData)
+                    {
+                        terrainExpandData = paintContextTmp.GetTerrain(i).gameObject.AddComponent<TerrainExpand>();
+                    }
+
+                    terrainExpandData.OnPaint(this.m_CurrentHeightMapIdx, paintContextTmp, i, 0);
+
+                    if (!this.waitToSaveTerrains.Contains(terrainExpandData))
+                    {
+                        this.waitToSaveTerrains.Add(terrainExpandData);
+                    }
+                }
+               
+                TerrainPaintUtility.EndPaintHeightmap(paintContextTmp, "Terrain Paint - Smooth Height");
                
             }
 
