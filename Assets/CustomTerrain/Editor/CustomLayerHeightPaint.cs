@@ -186,7 +186,7 @@ namespace SeasunTerrain
                 Vector2 halfTexelOffset = new Vector2(0.5f / terrain.terrainData.holesResolution, 0.5f / terrain.terrainData.holesResolution);
                 BrushTransform brushXform = TerrainPaintUtility.CalculateBrushTransform(terrain, editContext.uv - halfTexelOffset, editContext.brushSize, 0.0f);
 
-                PaintContextExp paintContextTmp = TerrainManager.BeginPaintHolesMapLayer(terrain, brushXform.GetBrushXYBounds(), this.m_CurrentHeightMapIdx);              
+                PaintContextExp paintContextTmp = TerrainManager.BeginPaintHolesMapLayer(terrain, brushXform.GetBrushXYBounds(), this.m_CurrentHeightMapIdx);
                 Material mat = ApplyBrushHoleFromBaseInternal(paintContextTmp, editContext.brushStrength, editContext.brushTexture, brushXform);
 
                 for (int i = 0; i < paintContextTmp.terrainCount; ++i)
@@ -211,10 +211,10 @@ namespace SeasunTerrain
                 ApplyBrushHole(paintContext, editContext.brushStrength, editContext.brushTexture, brushXform);
                 TerrainPaintUtility.EndPaintHoles(paintContext, "Terrain Paint - Paint Holes");
             }
-            else if(CurrentPaintType == PaintTypeEnum.SmoothHeight)
+            else if (CurrentPaintType == PaintTypeEnum.SmoothHeight)
             {
                 BrushTransform brushXform = TerrainPaintUtility.CalculateBrushTransform(terrain, editContext.uv, editContext.brushSize, 0.0f);
-                PaintContextExp paintContextTmp = TerrainManager.BeginPaintHeightMapLyaer(terrain, brushXform.GetBrushXYBounds(), this.m_CurrentHeightMapIdx);                
+                PaintContextExp paintContextTmp = TerrainManager.BeginPaintHeightMapLyaer(terrain, brushXform.GetBrushXYBounds(), this.m_CurrentHeightMapIdx);
                 ApplyBrushSmoothHeightFromBaseInternal(paintContextTmp, editContext.brushStrength, editContext.brushTexture, brushXform);
 
                 for (int i = 0; i < paintContextTmp.terrainCount; ++i)
@@ -232,9 +232,19 @@ namespace SeasunTerrain
                         this.waitToSaveTerrains.Add(terrainExpandData);
                     }
                 }
-               
+
+                List<int> leftLayers = new List<int>();
+                for (int i = 0; i < TerrainManager.SelectedLayer.Length; ++i)
+                {
+                    if (TerrainManager.SelectedLayer[i] && i != this.m_CurrentHeightMapIdx)
+                    {
+                        leftLayers.Add(i);
+                    }
+                }
+
+                TerrainManager.AddLeftHeightMapsToPainContex(paintContextTmp, leftLayers.ToArray());
+
                 TerrainPaintUtility.EndPaintHeightmap(paintContextTmp, "Terrain Paint - Smooth Height");
-               
             }
 
 
@@ -709,7 +719,7 @@ namespace SeasunTerrain
                                 {
                                     for (int i = 0; i < TerrainManager.AllTerrain.Count; ++i)
                                     {
-                                        TerrainManager.AllTerrain[i].GetComponent<TerrainExpand>()?.RotaitonLayer(this.m_CurrentHeightMapIdx, this.rotationAngle, this.rotationPivot, this.layerScale, this.layerHeightScale, this.m_HeightScale);
+                                        TerrainManager.AllTerrain[i].GetComponent<TerrainExpand>()?.RotaitonLayer(this.m_CurrentHeightMapIdx, this.rotationAngle, this.rotationPivot, this.layerScale, this.layerHeightScale, 1);
 
                                         if (!this.waitToSaveTerrains.Contains(TerrainManager.AllTerrain[i].GetComponent<TerrainExpand>()))
                                         {
@@ -721,7 +731,7 @@ namespace SeasunTerrain
                                 {
                                     if (TerrainManager.CurrentSelectedTerrain.GetComponent<TerrainExpand>())
                                     {
-                                        TerrainManager.CurrentSelectedTerrain.GetComponent<TerrainExpand>()?.RotaitonLayer(this.m_CurrentHeightMapIdx, this.rotationAngle, this.rotationPivot, this.layerScale, this.layerHeightScale, this.m_HeightScale);
+                                        TerrainManager.CurrentSelectedTerrain.GetComponent<TerrainExpand>()?.RotaitonLayer(this.m_CurrentHeightMapIdx, this.rotationAngle, this.rotationPivot, this.layerScale, this.layerHeightScale, 1);
                                     }
 
                                     if (!this.waitToSaveTerrains.Contains(TerrainManager.CurrentSelectedTerrain.GetComponent<TerrainExpand>()))
@@ -1074,7 +1084,7 @@ namespace SeasunTerrain
 
             for (int i = 0; i < TerrainManager.AllTerrain.Count; ++i)
             {
-                TerrainManager.AllTerrain[i].GetComponent<TerrainExpand>()?.ReLoadLayer(this.m_HeightScale);
+                TerrainManager.AllTerrain[i].GetComponent<TerrainExpand>()?.ReLoadLayer(1);
             }
         }
 

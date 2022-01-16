@@ -79,7 +79,7 @@ namespace SeasunTerrain
                 {
                     TerrainExpand te = TerrainManager.AllTerrain[i].gameObject.GetComponent<TerrainExpand>();
                     if (te.rtHeightMapList == null || te.rtHeightMapList.Count <= layerIdx)
-                    { 
+                    {
                         te.InitHeightMaps();
                     }
 
@@ -145,6 +145,17 @@ namespace SeasunTerrain
             return TerrainManager.paintHeightExtMat;
         }
 
+        private static Material heightMapBlitExtMat = null;
+        public static Material GetHeightmapBlitExtMat()
+        {
+            if (!TerrainManager.heightMapBlitExtMat)
+            {
+                TerrainManager.heightMapBlitExtMat = new Material(Shader.Find("Hidden/TerrainEngine/HeightBlitAdd"));
+            }
+
+            return TerrainManager.heightMapBlitExtMat;
+        }
+
         internal static PaintContextExp InitializePaintContext(Terrain terrain, int targetWidth, int targetHeight, RenderTextureFormat pcFormat, Rect boundsInTerrainSpace, int extraBorderPixels = 0, bool texelPadding = true)
         {
             PaintContextExp ctx = PaintContextExp.CreateExpFromBounds(terrain, boundsInTerrainSpace, targetWidth, targetHeight, extraBorderPixels, texelPadding);
@@ -171,6 +182,12 @@ namespace SeasunTerrain
             //将地型高度图与笔刷相交的区域blit到笔刷中，用于后续的高度计算
             ctx.GatherInitHeightmap(currentLayer);
             return ctx;
+        }
+
+        public static void AddLeftHeightMapsToPainContex(PaintContextExp ctx, int[] layers)
+        {
+            //将指定的纹理blit到笔刷中
+            ctx.GatherLeftHeightmap(layers);
         }
 
         public static PaintContextExp BeginPaintHolesMapLayer(Terrain terrain, Rect boundsInTerrainSpace, int currentLayer, int extraBorderPixels = 0)

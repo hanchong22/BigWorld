@@ -39,6 +39,47 @@ namespace UnityEngine.Experimental.TerrainAPI
                 });
         }
 
+        public void GatherLeftHeightmap(int[] layerIds)
+        {
+            var blitMaterial = UnityEngine.Experimental.TerrainAPI.TerrainPaintUtility.GetHeightBlitMaterial();
+
+            blitMaterial.SetFloat("_Height_Offset", 0.0f);
+            blitMaterial.SetFloat("_Height_Scale", 1.0f);
+
+            var addMat = TerrainManager.GetHeightmapBlitExtMat();
+
+            for (int i = 0; i < layerIds.Length; ++i)
+            {
+                var tmpTarget = RenderTexture.GetTemporary(this.destinationRenderTexture.width, this.destinationRenderTexture.height, 0, this.destinationRenderTexture.format, RenderTextureReadWrite.Linear);
+                var tmpTarget2 = RenderTexture.GetTemporary(this.destinationRenderTexture.width, this.destinationRenderTexture.height, 0, this.destinationRenderTexture.format, RenderTextureReadWrite.Linear);
+               
+
+                GatherInternalExp(
+                    t => TerrainManager.GetHeightMapByIdx(t, layerIds[i]),
+                    new Color(0.0f, 0.0f, 0.0f, 0.0f),
+                    "PaintContext.GatherHeightmap",
+                    blitMaterial: blitMaterial,
+                    beforeBlit: null,
+                    afterBlit: null,
+                    oldTexture: null,
+                    
+                    targetTex: () =>
+                     {
+                         return tmpTarget;
+                     }
+                    );
+
+                addMat.SetTexture("_Tex1", tmpTarget);
+                addMat.SetTexture("_Tex2", this.destinationRenderTexture);
+
+                Graphics.Blit(null, tmpTarget2, addMat);
+                Graphics.Blit(tmpTarget2, this.destinationRenderTexture);
+
+                RenderTexture.ReleaseTemporary(tmpTarget);
+                RenderTexture.ReleaseTemporary(tmpTarget2);
+            }
+        }
+
         private void GatherInternalExp(
            Func<Terrain, Texture> terrainToTexture,
            Color defaultColor,
@@ -46,12 +87,15 @@ namespace UnityEngine.Experimental.TerrainAPI
            Material blitMaterial = null,
            int blitPass = 0,
            Action<Terrain> beforeBlit = null,
-           Action<Terrain> afterBlit = null)
+           Action<Terrain> afterBlit = null,
+           Func<Texture> oldTexture = null,
+           Func<RenderTexture> targetTex = null
+           )
         {
             if (blitMaterial == null)
                 blitMaterial = TerrainManager.GetHeightSubtractionMat();
 
-            RenderTexture.active = sourceRenderTexture;
+            RenderTexture.active = targetTex != null ? targetTex() : sourceRenderTexture;
             GL.Clear(false, true, defaultColor);
 
             GL.PushMatrix();
@@ -70,6 +114,11 @@ namespace UnityEngine.Experimental.TerrainAPI
                 sourceTexture.filterMode = FilterMode.Point;
 
                 blitMaterial.SetTexture("_MainTex", sourceTexture);
+                if (oldTexture != null)
+                {
+                    blitMaterial.SetTexture("_OldTexture", oldTexture());
+                }
+
                 blitMaterial.SetPass(blitPass);
                 TerrainManager.DrawQuad(GetClippedPixelRectInRenderTexturePixels(i), GetClippedPixelRectInTerrainPixels(i), sourceTexture);
 
