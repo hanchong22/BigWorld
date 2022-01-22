@@ -466,7 +466,7 @@ namespace SeasunTerrain
                 FilterMode oldFilterMode = sourceRt.filterMode;
                 sourceRt.filterMode = FilterMode.Bilinear;
 
-                blitMaterial.SetTexture("_MainTex", sourceRt);                
+                blitMaterial.SetTexture("_MainTex", sourceRt);
                 blitMaterial.SetPass(1);
                 TerrainManager.DrawQuad(dstPixels, sourcePixels, sourceRt);
 
@@ -594,70 +594,134 @@ namespace SeasunTerrain
 
             float targetHeight = TerrainManager.BrashTargetHeight / terrain.terrainData.size.y;
 
+            var addMaterial = TerrainManager.GetHeightmapBlitExtMat();
+
+            addMaterial.SetFloat("_Height_Offset", 0.0f);
+            addMaterial.SetFloat("_Height_Scale", scale);
+            addMaterial.SetFloat("_Target_Height", targetHeight);
+            addMaterial.EnableKeyword("_HEIGHT_TYPE");
+            addMaterial.DisableKeyword("_HOLE_TYPE");
+
             float[,] heights = new float[this.baseHeightMap.width, this.baseHeightMap.height];
 
-            for (int y = 0; y < this.baseHeightMap.height; ++y)
+            RenderTexture rtTmp1 = RenderTexture.GetTemporary(this.terrainData.heightmapTexture.width, this.terrainData.heightmapTexture.height, 0, RenderTextureFormat.ARGBHalf);
+            RenderTexture rtTmp2 = RenderTexture.GetTemporary(this.terrainData.heightmapTexture.width, this.terrainData.heightmapTexture.height, 0, RenderTextureFormat.ARGBHalf);
+
+            Graphics.Blit(Texture2D.blackTexture, rtTmp1);
+
+            List<Texture2D> allHeightMap = ListPool<Texture2D>.Get();
+
+            if (TerrainManager.IsBaseLayerEnable)
             {
-                for (int x = 0; x < this.baseHeightMap.width; ++x)
+                allHeightMap.Add(this.baseHeightMap);
+            }
+
+            for (int i = 0; i < this.heightMapList.Count; ++i)
+            {
+                if (!TerrainManager.SelectedLayer[i] || !this.heightMapList[i])
                 {
-                    float addHeight = TerrainManager.IsBaseLayerEnable ? this.baseHeightMap.GetPixel(x, y).r : 0;
+                    continue;
+                }
 
-                    for (int i = 0; i < this.heightMapList.Count; ++i)
-                    {
-                        if (!TerrainManager.SelectedLayer[i] || !this.heightMapList[i])
-                        {
-                            continue;
-                        }
+                allHeightMap.Add(this.heightMapList[i]);
+            }
 
-                        Vector4 value = this.heightMapList[i].GetPixel(x, y);
-                        float height = value.x + value.y;
+            for (int i = 0; i < allHeightMap.Count; ++i)
+            {
+                addMaterial.SetTexture("_Tex1", rtTmp1);
+                addMaterial.SetTexture("_Tex2", allHeightMap[i]);
 
-                        if (value.z == 0)
-                        {
-                            if (height > 0)
-                            {
-                                height = Mathf.Clamp(height * scale, 0, targetHeight);
-                            }
-                            else
-                            {
-                                height = Mathf.Clamp(height * scale, -targetHeight, 0);
-                            }
-                        }
+                Graphics.Blit(null, rtTmp2, addMaterial);
+                Graphics.Blit(rtTmp2, rtTmp1);
+            }
 
-                        addHeight += height;
-                    }
+            ListPool<Texture2D>.Release(allHeightMap);
 
-                    heights[y, x] = Mathf.Clamp(addHeight * scale, 0, 1);
+            Texture2D texTmp = new Texture2D(this.baseHeightMap.width, this.baseHeightMap.height, TextureFormat.RGBAHalf, false);
+            CopyRtToTexture2D(rtTmp1, texTmp);
+            texTmp.Apply();
+
+            for (int y = 0; y < texTmp.height; ++y)
+            {
+                for (int x = 0; x < texTmp.width; ++x)
+                {
+                    Vector4 value = texTmp.GetPixel(x, y);
+
+                    float height = value.x + value.y;
+
+                    heights[y, x] = Mathf.Clamp(height, 0, 1);
                 }
             }
 
             terrainData.SetHeights(0, 0, heights);
+
+            RenderTexture.ReleaseTemporary(rtTmp1);
+            RenderTexture.ReleaseTemporary(rtTmp2);
+            Texture2D.DestroyImmediate(texTmp);
+
+            rtTmp1 = RenderTexture.GetTemporary(this.terrainData.holesResolution, this.terrainData.holesResolution, 0, RenderTextureFormat.R8);
+            rtTmp2 = RenderTexture.GetTemporary(this.terrainData.holesResolution, this.terrainData.holesResolution, 0, RenderTextureFormat.R8);
+
+            addMaterial.DisableKeyword("_HEIGHT_TYPE");
+            addMaterial.EnableKeyword("_HOLE_TYPE");
+
+            List<Texture2D> allHoleMaps = ListPool<Texture2D>.Get();
+            if (TerrainManager.IsBaseLayerEnable)
+            {
+                allHoleMaps.Add(this.baseHoleMap);
+            }
+
+            for (int i = 0; i < this.heightMapList.Count; ++i)
+            {
+                if (!TerrainManager.SelectedLayer[i] || !this.heightMapList[i])
+                {
+                    continue;
+                }
+
+                allHoleMaps.Add(this.holeMapList[i]);
+            }
+
+            for (int i = 1; i < allHoleMaps.Count; ++i)
+            {
+                Texture src = null;
+                if (i == 1)
+                {
+                    src = allHoleMaps[0];
+                }
+                else
+                {
+                    src = rtTmp1;
+                }
+
+                addMaterial.SetTexture("_Tex1", src);
+                addMaterial.SetTexture("_Tex2", allHoleMaps[i]);
+
+                Graphics.Blit(null, rtTmp2, addMaterial);
+                Graphics.Blit(rtTmp2, rtTmp1);
+            }
+
+            ListPool<Texture2D>.Release(allHoleMaps);
+
+            texTmp = new Texture2D(this.terrainData.holesResolution, this.terrainData.holesResolution, TextureFormat.R8, false);
+            CopyRtToTexture2D(rtTmp1, texTmp);
+            texTmp.Apply();
 
             bool[,] holes = new bool[this.terrainData.holesResolution, this.terrainData.holesResolution];
             for (int y = 0; y < this.terrainData.holesResolution; ++y)
             {
                 for (int x = 0; x < this.terrainData.holesResolution; ++x)
                 {
-                    bool hole = TerrainManager.IsBaseLayerEnable ? this.baseHoleMap.GetPixel(x, y).r < 0.5f : true;
-
-                    for (int i = 0; i < this.holeMapList.Count; ++i)
-                    {
-                        if (TerrainManager.SelectedLayer.Length <= i || !TerrainManager.SelectedLayer[i] || !this.holeMapList[i])
-                        {
-                            continue;
-                        }
-
-                        Vector4 value = this.holeMapList[i].GetPixel(x, y);
-                        bool lb = value.x < 0.5f;                       
-
-                        hole = lb && hole;
-                    }
+                    bool hole = texTmp.GetPixel(x, y).r < 0.5f ;                   
 
                     holes[y, x] = hole;
                 }
             }
 
             terrainData.SetHoles(0, 0, holes);
+
+            Texture2D.DestroyImmediate(texTmp);
+            RenderTexture.ReleaseTemporary(rtTmp1);
+            RenderTexture.ReleaseTemporary(rtTmp2);
         }
 
         public bool ReimportHeightmap(int heighMapID, Texture2D newTex, float scale, int limitType)

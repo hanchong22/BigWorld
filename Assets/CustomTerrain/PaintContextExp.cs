@@ -44,7 +44,7 @@ namespace UnityEngine.Experimental.TerrainAPI
             var blitMaterial = UnityEngine.Experimental.TerrainAPI.TerrainPaintUtility.GetHeightBlitMaterial();
 
             blitMaterial.SetFloat("_Height_Offset", 0.0f);
-            blitMaterial.SetFloat("_Height_Scale", 1.0f);
+            blitMaterial.SetFloat("_Height_Scale", 1.0f);           
 
             var addMat = TerrainManager.GetHeightmapBlitExtMat();
 
@@ -71,6 +71,11 @@ namespace UnityEngine.Experimental.TerrainAPI
 
                 addMat.SetTexture("_Tex1", tmpTarget);
                 addMat.SetTexture("_Tex2", this.destinationRenderTexture);
+                addMat.SetFloat("_Height_Offset", 0.0f);
+                addMat.SetFloat("_Height_Scale", 1.0f);
+                addMat.SetFloat("_Target_Height", 1.0f);
+                addMat.EnableKeyword("_HEIGHT_TYPE");
+                addMat.DisableKeyword("_HOLE_TYPE");
 
                 Graphics.Blit(null, tmpTarget2, addMat);
                 Graphics.Blit(tmpTarget2, this.destinationRenderTexture);

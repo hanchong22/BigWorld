@@ -9,16 +9,20 @@ Shader "Hidden/TerrainEngine/HeightBlitAdd" {
             ZTest Always Cull Off ZWrite Off
 
             CGPROGRAM
+
+            #pragma multi_compile_local _HEIGHT_TYPE _HOLE_TYPE       
             #pragma vertex vert
             #pragma fragment frag
             #include "UnityCG.cginc"
 
             UNITY_DECLARE_SCREENSPACE_TEXTURE(_Tex1);
             UNITY_DECLARE_SCREENSPACE_TEXTURE(_Tex2);
+
             uniform float4 _Tex1_ST;
             uniform float4 _Tex2_ST;
             uniform float _Height_Offset;
             uniform float _Height_Scale;
+            uniform float _Target_Height;
 
             struct appdata_t {
                 float4 vertex : POSITION;
@@ -48,8 +52,34 @@ Shader "Hidden/TerrainEngine/HeightBlitAdd" {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(i);
                 float4 map1 = UNITY_SAMPLE_SCREENSPACE_TEXTURE(_Tex1, i.texcoord.xy);
                 float4 map2 = UNITY_SAMPLE_SCREENSPACE_TEXTURE(_Tex2, i.texcoord.zw);
-                float height = UnpackHeightmap(map1) + UnpackHeightmap(map2);
-                return PackHeightmap(height);
+                #ifdef _HEIGHT_TYPE
+                    float height1 = UnpackHeightmap(map1);
+                    float height2 = UnpackHeightmap(map2);
+
+                    if(map2.z == 0)
+                    {
+                        if(height2 > 0)
+                        {
+                            height2 =  clamp(height2 * _Height_Scale + _Height_Offset, 0, _Target_Height);
+                        }
+                        else
+                        {
+                            height2 =  clamp(height2 * _Height_Scale + _Height_Offset, -_Target_Height, 0);
+                        }
+                    }                
+
+                    float height = height1 + height2;
+
+                    return PackHeightmap(height);
+                #elif _HOLE_TYPE
+                    bool isHole1 = map1.x < 0.5f;
+                    bool isHole2 = map2.x < 0.5f;
+                    bool isHole = isHole1 && isHole2;
+                    return float4(isHole?0:1,0,0,0);
+
+                #else
+                    return map1 + map2;
+                #endif
             }
             ENDCG
 
