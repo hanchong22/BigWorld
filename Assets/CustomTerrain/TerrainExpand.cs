@@ -632,7 +632,7 @@ namespace SeasunTerrain
                 addMaterial.SetTexture("_Tex2", allHeightMap[i]);
                 int idx = this.heightMapList.IndexOf(allHeightMap[i]);
 
-                addMaterial.SetFloat("_Overlay_Layer", TerrainManager.OverlayLayers[idx] ? 1 : 0.0f);
+                addMaterial.SetFloat("_Overlay_Layer", idx >= 0 && TerrainManager.OverlayLayers[idx] ? 1 : 0.0f);
 
                 Graphics.Blit(null, rtTmp2, addMaterial);
                 Graphics.Blit(rtTmp2, rtTmp1);

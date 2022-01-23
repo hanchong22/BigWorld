@@ -54,7 +54,7 @@ namespace SeasunTerrain
                 {
                     textColor = Color.red,
                 },
-                alignment = TextAnchor.MiddleLeft,                
+                alignment = TextAnchor.MiddleLeft,
             };
         }
 
@@ -629,21 +629,20 @@ namespace SeasunTerrain
                         GUILayout.Space(5);
                     }
                 }
-            }
 
-            EditorGUI.BeginChangeCheck();
-            {
-                if (GUILayout.Button("", "OL Plus", GUILayout.Width(20)))
+                EditorGUI.BeginChangeCheck();
                 {
-                    this.titleEditorIdx = -1;
-                    this.AddHeightLayer();
+                    if (GUILayout.Button("", "OL Plus", GUILayout.Width(20)))
+                    {
+                        this.titleEditorIdx = -1;
+                        this.AddHeightLayer();
+                    }
+                }
+                if (EditorGUI.EndChangeCheck())
+                {
+                    Save(true);
                 }
             }
-            if (EditorGUI.EndChangeCheck())
-            {
-                Save(true);
-            }
-
             EditorGUILayout.EndVertical();
         }
 
@@ -771,6 +770,11 @@ namespace SeasunTerrain
 
         private void SetOverlayLayer()
         {
+            if (this.m_CurrentHeightMapIdx < 0)
+            {
+                return;
+            }
+
             EditorGUILayout.BeginVertical();
             if (this.m_overlayLayers[this.m_CurrentHeightMapIdx])
             {
