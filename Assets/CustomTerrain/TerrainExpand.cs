@@ -630,6 +630,9 @@ namespace SeasunTerrain
             {
                 addMaterial.SetTexture("_Tex1", rtTmp1);
                 addMaterial.SetTexture("_Tex2", allHeightMap[i]);
+                int idx = this.heightMapList.IndexOf(allHeightMap[i]);
+
+                addMaterial.SetFloat("_Overlay_Layer", TerrainManager.OverlayLayers[idx] ? 1 : 0.0f);
 
                 Graphics.Blit(null, rtTmp2, addMaterial);
                 Graphics.Blit(rtTmp2, rtTmp1);
@@ -662,6 +665,7 @@ namespace SeasunTerrain
             rtTmp1 = RenderTexture.GetTemporary(this.terrainData.holesResolution, this.terrainData.holesResolution, 0, RenderTextureFormat.R8);
             rtTmp2 = RenderTexture.GetTemporary(this.terrainData.holesResolution, this.terrainData.holesResolution, 0, RenderTextureFormat.R8);
 
+            addMaterial.SetFloat("_Overlay_Layer", 0.0f);
             addMaterial.DisableKeyword("_HEIGHT_TYPE");
             addMaterial.EnableKeyword("_HOLE_TYPE");
 
@@ -711,7 +715,7 @@ namespace SeasunTerrain
             {
                 for (int x = 0; x < this.terrainData.holesResolution; ++x)
                 {
-                    bool hole = texTmp.GetPixel(x, y).r < 0.5f ;                   
+                    bool hole = texTmp.GetPixel(x, y).r < 0.5f;
 
                     holes[y, x] = hole;
                 }
@@ -901,6 +905,7 @@ namespace SeasunTerrain
                 {
                     this.originMapList[heighMapID] = new Texture2D(tex.width, tex.height, tex.format, false);
                     CopyRtToTexture2D(rt, this.originMapList[heighMapID]);
+                    this.originMapList[heighMapID].Apply();
 
                     AssetDatabase.CreateAsset(this.originMapList[heighMapID], System.IO.Path.Combine(this.terrainDataPath, $"{this.terrainData.name}_heightmap_origin{heighMapID}.asset"));
                 }
@@ -926,6 +931,7 @@ namespace SeasunTerrain
 
             Graphics.Blit(tex, rt, TerrainManager.RotationMaterial, 0);
             CopyRtToTexture2D(rt, tex);
+            tex.Apply();
 
             AssetDatabase.SaveAssets();
 

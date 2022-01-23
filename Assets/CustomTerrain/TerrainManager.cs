@@ -16,6 +16,7 @@ namespace SeasunTerrain
         public static int CurrentHeightMapIdx { get; set; }
         public static bool OnlyLoadSelectedLayer { get; set; }
         public static bool[] SelectedLayer { get; set; }
+        public static bool[] OverlayLayers { get; set; }
         public static bool IsBaseLayerEnable { get; set; }
         public static float BrashTargetHeight { get; set; }
 

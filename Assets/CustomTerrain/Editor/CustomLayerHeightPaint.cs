@@ -19,6 +19,7 @@ namespace SeasunTerrain
         [SerializeField] int m_CurrentHeightMapIdx = 0;
         [SerializeField] bool[] m_selectedLyaers = new bool[] { true };
         [SerializeField] bool[] m_lockedLyaers = new bool[] { false };
+        [SerializeField] bool[] m_overlayLayers = new bool[] { false };
         [SerializeField] string[] m_heightMapTitles;
         [SerializeField] bool m_IsBaseLayerEnable = true;
         [SerializeField] float m_direction = 0.0f;
@@ -43,7 +44,18 @@ namespace SeasunTerrain
             public readonly GUIContent height = EditorGUIUtility.TrTextContent("画笔高度", "可以直接设置画笔高度，也可以在地形上按住shift和鼠标滚轮进行调整");
             public readonly GUIContent heightValueScale = EditorGUIUtility.TrTextContent("高度值缩放");
             public readonly GUIContent direction = EditorGUIUtility.TrTextContent("模糊方向", "向上模糊(1.0), 向下模糊 (-1.0) 或双向 (0.0)");
+            public readonly GUIContent SetOverlay = EditorGUIUtility.TrTextContent("设置为覆盖层");
+            public readonly GUIContent CancleOverlay = EditorGUIUtility.TrTextContent("设置为普通层");
             public readonly GUIContent save = EditorGUIUtility.TrTextContent("保存", "保存所修改");
+            public readonly GUIStyle redTitle = new GUIStyle()
+            {
+                fontStyle = FontStyle.Bold,
+                normal = new GUIStyleState()
+                {
+                    textColor = Color.red,
+                },
+                alignment = TextAnchor.MiddleLeft,                
+            };
         }
 
         [Shortcut("Terrain/Custom Layers", typeof(TerrainToolShortcutContext), KeyCode.F10)]
@@ -92,6 +104,7 @@ namespace SeasunTerrain
             TerrainManager.InitAllTerrain(this.m_HeightMapNumber, this.m_CurrentHeightMapIdx, this.m_TargetHeight);
             TerrainManager.IsBaseLayerEnable = this.m_IsBaseLayerEnable;
             TerrainManager.SelectedLayer = this.m_selectedLyaers;
+            TerrainManager.OverlayLayers = this.m_overlayLayers;
             if (CustomLayerHeightPaint.m_CreateTool == null)
             {
                 CustomLayerHeightPaint.m_CreateTool = TileTerrainManagerTool.instance;
@@ -417,6 +430,10 @@ namespace SeasunTerrain
 
             GUILayout.Space(3);
 
+            this.SetOverlayLayer();
+
+            GUILayout.Space(3);
+
             if (this.waitToSaveTerrains.Count > 0)
             {
                 if (GUILayout.Button(styles.save))
@@ -448,7 +465,7 @@ namespace SeasunTerrain
                 this.InitHeightMapTitles();
             }
 
-            if (this.m_selectedLyaers.Length != this.m_HeightMapNumber || this.m_lockedLyaers.Length != this.m_HeightMapNumber)
+            if (this.m_selectedLyaers.Length != this.m_HeightMapNumber || this.m_lockedLyaers.Length != this.m_HeightMapNumber || this.m_overlayLayers.Length != this.m_HeightMapNumber)
             {
                 this.InitLayerNumberString();
             }
@@ -536,7 +553,7 @@ namespace SeasunTerrain
                         {
                             EditorGUI.BeginChangeCheck();
                             {
-                                if (GUILayout.Button(this.m_heightMapTitles[i], "BoldLabel"))
+                                if (GUILayout.Button(this.m_heightMapTitles[i], this.m_overlayLayers[i] ? GetStyles().redTitle : "BoldLabel"))
                                 {
                                     this.m_CurrentHeightMapIdx = i;
                                 }
@@ -750,6 +767,28 @@ namespace SeasunTerrain
                 }
                 EditorGUILayout.EndVertical();
             }
+        }
+
+        private void SetOverlayLayer()
+        {
+            EditorGUILayout.BeginVertical();
+            if (this.m_overlayLayers[this.m_CurrentHeightMapIdx])
+            {
+                if (GUILayout.Button(GetStyles().CancleOverlay))
+                {
+                    this.m_overlayLayers[this.m_CurrentHeightMapIdx] = false;
+                    TerrainManager.OverlayLayers = this.m_overlayLayers;
+                }
+            }
+            else
+            {
+                if (GUILayout.Button(GetStyles().SetOverlay))
+                {
+                    this.m_overlayLayers[this.m_CurrentHeightMapIdx] = true;
+                    TerrainManager.OverlayLayers = this.m_overlayLayers;
+                }
+            }
+            EditorGUILayout.EndVertical();
         }
 
         private void ExportImportLayers()
@@ -1073,6 +1112,15 @@ namespace SeasunTerrain
             {
                 this.m_lockedLyaers[i] = tmp.Length > i ? tmp[i] : false;
             }
+
+            tmp = this.m_overlayLayers;
+            this.m_overlayLayers = new bool[this.m_HeightMapNumber];
+            for (int i = 0; i < this.m_HeightMapNumber; ++i)
+            {
+                this.m_overlayLayers[i] = tmp.Length > i ? tmp[i] : false;
+            }
+
+            TerrainManager.OverlayLayers = this.m_overlayLayers;
         }
 
         private void ReloadSelectedLayers()

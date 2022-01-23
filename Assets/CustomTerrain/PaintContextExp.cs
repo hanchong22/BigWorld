@@ -74,6 +74,7 @@ namespace UnityEngine.Experimental.TerrainAPI
                 addMat.SetFloat("_Height_Offset", 0.0f);
                 addMat.SetFloat("_Height_Scale", 1.0f);
                 addMat.SetFloat("_Target_Height", 1.0f);
+                addMat.SetFloat("_Overlay_Layer", 0.0f);
                 addMat.EnableKeyword("_HEIGHT_TYPE");
                 addMat.DisableKeyword("_HOLE_TYPE");
 

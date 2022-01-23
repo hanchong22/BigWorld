@@ -23,6 +23,7 @@ Shader "Hidden/TerrainEngine/HeightBlitAdd" {
             uniform float _Height_Offset;
             uniform float _Height_Scale;
             uniform float _Target_Height;
+            uniform float _Overlay_Layer;
 
             struct appdata_t {
                 float4 vertex : POSITION;
@@ -66,7 +67,12 @@ Shader "Hidden/TerrainEngine/HeightBlitAdd" {
                         {
                             height2 =  clamp(height2 * _Height_Scale + _Height_Offset, -_Target_Height, 0);
                         }
-                    }                
+                    }
+
+                    if(_Overlay_Layer >= 1 && height2 > 0)               
+                    {
+                        height1 = 0;
+                    }
 
                     float height = height1 + height2;
 
