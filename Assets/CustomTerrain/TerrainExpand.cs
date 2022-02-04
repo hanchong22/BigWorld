@@ -542,8 +542,7 @@ namespace SeasunTerrain
 
 
             if (waitToDelHole)
-            {
-                GameObject.DestroyImmediate(waitToDelHole);
+            {               
                 AssetDatabase.DeleteAsset(path3);
 
                 for (int i = idx + 1; i < this.holeMapList.Count; ++i)
@@ -557,8 +556,7 @@ namespace SeasunTerrain
 
 
             if (waitToDelTex2)
-            {
-                GameObject.DestroyImmediate(waitToDelTex2);
+            {                
                 AssetDatabase.DeleteAsset(path2);
 
                 for (int i = idx + 1; i < this.originMapList.Count; ++i)
@@ -937,6 +935,66 @@ namespace SeasunTerrain
 
             this.ReLoadLayer(scale);
 
+        }
+
+        public void MergeHeightMapWithUpper(int idx)
+        {
+            if(this.heightMapList.Count <= idx || this.originMapList.Count <= idx || this.rtHeightMapList.Count <= idx || this.holeMapList.Count <= idx || this.rtHoleMapList.Count <= idx)
+            {
+                this.CheckOrInitData();
+            }
+
+            Texture2D dstTex = this.heightMapList[idx - 1];
+            Texture2D dstTex2 = this.originMapList[idx - 1];
+            RenderTexture dstRt = this.rtHeightMapList[idx - 1];
+            Texture2D dstHole = this.holeMapList[idx - 1];
+            RenderTexture dstRtHole = this.rtHoleMapList[idx - 1];
+
+            Texture2D sourceTex = this.heightMapList[idx];
+            Texture2D sourceTex2 = this.originMapList[idx];
+            RenderTexture sourceRt = this.rtHeightMapList[idx];
+            Texture2D sourceHole = this.holeMapList[idx];
+            RenderTexture sourceRtHole = this.rtHoleMapList[idx];
+
+            var addMat = TerrainManager.GetHeightmapBlitExtMat();
+
+            addMat.SetFloat("_Overlay_Layer", 0);
+            addMat.SetTexture("_Tex1", dstTex);
+            addMat.SetTexture("_Tex2", sourceTex);
+            addMat.SetFloat("_Height_Offset", 0.0f);
+            addMat.SetFloat("_Height_Scale", 1.0f);
+            addMat.SetFloat("_Target_Height", 1.0f);
+            addMat.SetFloat("_Overlay_Layer", 0.0f);
+            addMat.EnableKeyword("_HEIGHT_TYPE");
+            addMat.DisableKeyword("_HOLE_TYPE");
+
+            Graphics.Blit(null, dstRt, addMat);
+            CopyRtToTexture2D(dstRt, dstTex);
+            dstTex.Apply();
+
+            if (dstTex2 && sourceTex2)
+            {
+                var tmpTarget = RenderTexture.GetTemporary(dstTex2.width, dstTex2.height, 0, dstRt.format, RenderTextureReadWrite.Linear);
+                addMat.SetTexture("_Tex1", dstTex2);
+                addMat.SetTexture("_Tex2", sourceTex2);
+                Graphics.Blit(null, tmpTarget, addMat);
+                CopyRtToTexture2D(tmpTarget, dstTex2);
+                dstTex2.Apply();
+                RenderTexture.ReleaseTemporary(tmpTarget);
+            }
+
+            if (dstHole && sourceHole && dstRtHole)
+            {
+                addMat.SetTexture("_Tex1", dstHole);
+                addMat.SetTexture("_Tex2", sourceHole);
+                addMat.DisableKeyword("_HEIGHT_TYPE");
+                addMat.EnableKeyword("_HOLE_TYPE");
+                Graphics.Blit(null, dstRtHole, addMat);
+                CopyRtToTexture2D(dstRtHole, dstHole);
+                dstHole.Apply();
+            }
+
+            AssetDatabase.SaveAssets();
         }
 
 

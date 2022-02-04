@@ -46,6 +46,7 @@ namespace SeasunTerrain
             public readonly GUIContent direction = EditorGUIUtility.TrTextContent("模糊方向", "向上模糊(1.0), 向下模糊 (-1.0) 或双向 (0.0)");
             public readonly GUIContent SetOverlay = EditorGUIUtility.TrTextContent("设置为覆盖层");
             public readonly GUIContent CancleOverlay = EditorGUIUtility.TrTextContent("设置为普通层");
+            public readonly GUIContent MergeWithUpper = EditorGUIUtility.TrTextContent("向上合并");
             public readonly GUIContent save = EditorGUIUtility.TrTextContent("保存", "保存所修改");
             public readonly GUIStyle redTitle = new GUIStyle()
             {
@@ -419,6 +420,16 @@ namespace SeasunTerrain
             GUILayout.Space(2);
 
             this.DrawLayers();
+
+            GUILayout.Space(2);
+
+            if (this.m_CurrentHeightMapIdx > 0)
+            {
+                if (GUILayout.Button(this.GetStyles().MergeWithUpper))
+                {
+                    this.MergeWithUpper(this.m_CurrentHeightMapIdx);
+                }
+            }
 
             GUILayout.Space(3);
 
@@ -1149,67 +1160,90 @@ namespace SeasunTerrain
             TerrainManager.InitAllTerrain(this.m_HeightMapNumber, this.m_CurrentHeightMapIdx, this.m_TargetHeight);
         }
 
-        private void RemoveHeightLayer(int idx)
+        private void RemoveHeightLayer(int idx, bool dialog = true)
         {
-            if (this.m_lockedLyaers[idx])
+            if (this.m_lockedLyaers[idx] || this.m_HeightMapNumber <= 0)
             {
                 EditorUtility.DisplayDialog("错误", "无法删除已锁定的图层", "确定");
                 return;
             }
 
-            if (EditorUtility.DisplayDialog("确认删除", $"真的删除{ this.m_heightMapTitles[idx]}吗？", "删除", "不删"))
+            if (dialog && !EditorUtility.DisplayDialog("确认删除", $"真的删除{ this.m_heightMapTitles[idx]}吗？", "删除", "不删"))
             {
-                if (this.m_HeightMapNumber <= 0)
-                {
-                    return;
-                }
-
-                for (int i = 0; i < TerrainManager.AllTerrain.Count; ++i)
-                {
-                    TerrainManager.AllTerrain[i].GetComponent<TerrainExpand>()?.RemoveLayer(idx);
-                }
-
-                this.m_HeightMapNumber--;
-
-                if (this.m_CurrentHeightMapIdx <= this.m_HeightMapNumber)
-                {
-                    this.m_CurrentHeightMapIdx = this.m_HeightMapNumber - 1;
-                }
-
-                if (this.m_heightMapTitles.Length > idx)
-                {
-                    for (int i = idx; i < this.m_heightMapTitles.Length - 1; ++i)
-                    {
-                        this.m_heightMapTitles[i] = this.m_heightMapTitles[i + 1];
-                    }
-
-                    var old = this.m_heightMapTitles;
-                    this.m_heightMapTitles = new string[this.m_HeightMapNumber];
-                    for (int i = 0; i < this.m_HeightMapNumber && i < old.Length; ++i)
-                    {
-                        this.m_heightMapTitles[i] = old[i];
-                    }
-                }
-
-                if (this.m_selectedLyaers.Length > idx)
-                {
-                    for (int i = idx; i < this.m_selectedLyaers.Length - 1; ++i)
-                    {
-                        this.m_selectedLyaers[i] = this.m_selectedLyaers[i + 1];
-                    }
-
-                    var old = this.m_selectedLyaers;
-                    this.m_selectedLyaers = new bool[this.m_HeightMapNumber];
-                    for (int i = 0; i < this.m_HeightMapNumber && i < old.Length; ++i)
-                    {
-                        this.m_selectedLyaers[i] = old[i];
-                    }
-                }
-
-                TerrainManager.InitAllTerrain(this.m_HeightMapNumber, this.m_CurrentHeightMapIdx, this.m_TargetHeight);
-
-                this.ReloadSelectedLayers();
+                return;
             }
+
+            for (int i = 0; i < TerrainManager.AllTerrain.Count; ++i)
+            {
+                TerrainManager.AllTerrain[i].GetComponent<TerrainExpand>()?.RemoveLayer(idx);
+            }
+
+            this.m_HeightMapNumber--;
+
+            if (this.m_CurrentHeightMapIdx <= this.m_HeightMapNumber)
+            {
+                this.m_CurrentHeightMapIdx = this.m_HeightMapNumber - 1;
+            }
+
+            if (this.m_heightMapTitles.Length > idx)
+            {
+                for (int i = idx; i < this.m_heightMapTitles.Length - 1; ++i)
+                {
+                    this.m_heightMapTitles[i] = this.m_heightMapTitles[i + 1];
+                }
+
+                var old = this.m_heightMapTitles;
+                this.m_heightMapTitles = new string[this.m_HeightMapNumber];
+                for (int i = 0; i < this.m_HeightMapNumber && i < old.Length; ++i)
+                {
+                    this.m_heightMapTitles[i] = old[i];
+                }
+            }
+
+            if (this.m_selectedLyaers.Length > idx)
+            {
+                for (int i = idx; i < this.m_selectedLyaers.Length - 1; ++i)
+                {
+                    this.m_selectedLyaers[i] = this.m_selectedLyaers[i + 1];
+                }
+
+                var old = this.m_selectedLyaers;
+                this.m_selectedLyaers = new bool[this.m_HeightMapNumber];
+                for (int i = 0; i < this.m_HeightMapNumber && i < old.Length; ++i)
+                {
+                    this.m_selectedLyaers[i] = old[i];
+                }
+            }
+
+            TerrainManager.InitAllTerrain(this.m_HeightMapNumber, this.m_CurrentHeightMapIdx, this.m_TargetHeight);
+
+            this.ReloadSelectedLayers();
+        }
+
+        private void MergeWithUpper(int idx)
+        {
+            if (idx <= 0 || this.m_HeightMapNumber <= 1)
+            {
+                return;
+            }
+
+            if (this.m_lockedLyaers[idx] || this.m_lockedLyaers[idx - 1])
+            {
+                EditorUtility.DisplayDialog("错误", "无法操作已锁定的图层", "确定");
+                return;
+            }
+
+            if (!EditorUtility.DisplayDialog(this.GetStyles().MergeWithUpper.text, "确认将此图层与上一层合并，并且删除此图层吗？", "确认", "取消"))
+            {
+                return;
+            }
+
+            for (int i = 0; i < TerrainManager.AllTerrain.Count; ++i)
+            {
+                TerrainManager.AllTerrain[i].GetComponent<TerrainExpand>()?.MergeHeightMapWithUpper(idx);
+            }
+
+            this.RemoveHeightLayer(idx, false);
         }
 
         #endregion
