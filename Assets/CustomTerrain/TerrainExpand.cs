@@ -532,6 +532,11 @@ namespace SeasunTerrain
             string path3 = waitToDelHole ? AssetDatabase.GetAssetPath(waitToDelHole) : null;
 
             AssetDatabase.DeleteAsset(path);
+            if(File.Exists(path))
+            {
+                File.Delete(path);
+            }
+
             GameObject.DestroyImmediate(waitToDelTex);
             RenderTexture.ReleaseTemporary(waitToDelRt);
 
@@ -540,41 +545,29 @@ namespace SeasunTerrain
                 RenderTexture.ReleaseTemporary(waitToDelRtHole);
             }
 
-
             if (waitToDelHole)
             {               
                 AssetDatabase.DeleteAsset(path3);
-
-                for (int i = idx + 1; i < this.holeMapList.Count; ++i)
+                if (File.Exists(path3))
                 {
-                    string tmpPath = AssetDatabase.GetAssetPath(this.holeMapList[i]);
-                    AssetDatabase.RenameAsset(tmpPath, path3);
-                    this.holeMapList[i] = AssetDatabase.LoadAssetAtPath<Texture2D>(path3);
-                    path3 = tmpPath;
+                    File.Delete(path3);
                 }
+
+                GameObject.DestroyImmediate(waitToDelHole);
             }
 
 
             if (waitToDelTex2)
             {                
                 AssetDatabase.DeleteAsset(path2);
-
-                for (int i = idx + 1; i < this.originMapList.Count; ++i)
+                if (File.Exists(path2))
                 {
-                    string tmpPath = AssetDatabase.GetAssetPath(this.originMapList[i]);
-                    AssetDatabase.RenameAsset(tmpPath, path2);
-                    this.originMapList[i] = AssetDatabase.LoadAssetAtPath<Texture2D>(path2);
-                    path2 = tmpPath;
+                    File.Delete(path2);
                 }
+
+                GameObject.Destroy(waitToDelTex2);
             }
 
-            for (int i = idx + 1; i < this.heightMapList.Count; ++i)
-            {
-                string tmpPath = AssetDatabase.GetAssetPath(this.heightMapList[i]);
-                AssetDatabase.RenameAsset(tmpPath, path);
-                this.heightMapList[i] = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
-                path = tmpPath;
-            }
 
             this.heightMapList.RemoveAt(idx);
             this.rtHeightMapList.RemoveAt(idx);
