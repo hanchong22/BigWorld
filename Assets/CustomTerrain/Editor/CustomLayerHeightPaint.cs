@@ -483,53 +483,22 @@ namespace SeasunTerrain
 
             EditorGUILayout.BeginVertical("sv_iconselector_back");
             {
-                if (this.m_CurrentHeightMapIdx < 0)
-                {
-                    GUILayout.Space(5);
-                }
+               
 
-                EditorGUILayout.BeginHorizontal(this.m_CurrentHeightMapIdx < 0 ? "LightmapEditorSelectedHighlight" : "SelectionRect");
+                EditorGUI.BeginChangeCheck();
                 {
-                    GUILayout.Space(5);
-                    EditorGUI.BeginChangeCheck();
+                    if (GUILayout.Button("", "OL Plus", GUILayout.Width(20)))
                     {
-                        if (GUILayout.Button("Base Layer", "BoldLabel", GUILayout.Width(150)))
-                        {
-                            this.m_CurrentHeightMapIdx = -1;
-                        }
-                    }
-
-                    if (EditorGUI.EndChangeCheck())
-                    {
-                        TerrainManager.CurrentHeightMapIdx = this.m_CurrentHeightMapIdx;
                         this.titleEditorIdx = -1;
+                        this.AddHeightLayer();
                     }
-
-                    EditorGUI.BeginChangeCheck();
-                    {
-                        this.m_IsBaseLayerEnable = GUILayout.Toggle(this.m_IsBaseLayerEnable, "", "OL ToggleWhite", GUILayout.Width(20));
-                    }
-
-                    if (EditorGUI.EndChangeCheck())
-                    {
-                        TerrainManager.SelectedLayer = this.m_selectedLyaers;
-                        TerrainManager.IsBaseLayerEnable = this.m_IsBaseLayerEnable;
-                        this.ReloadSelectedLayers();
-                        Save(true);
-                    }
-
-                    GUILayout.Label(EditorGUIUtility.IconContent("IN LockButton on"));
-
-                    GUILayout.Space(5);
                 }
-                EditorGUILayout.EndHorizontal();
-
-                if (this.m_CurrentHeightMapIdx < 0)
+                if (EditorGUI.EndChangeCheck())
                 {
-                    GUILayout.Space(5);
+                    Save(true);
                 }
 
-                for (int i = 0; i < this.m_HeightMapNumber; ++i)
+                for (int i = this.m_HeightMapNumber - 1; i >= 0; i--)
                 {
                     if (i == this.m_CurrentHeightMapIdx)
                     {
@@ -641,17 +610,50 @@ namespace SeasunTerrain
                     }
                 }
 
-                EditorGUI.BeginChangeCheck();
+                if (this.m_CurrentHeightMapIdx < 0)
                 {
-                    if (GUILayout.Button("", "OL Plus", GUILayout.Width(20)))
-                    {
-                        this.titleEditorIdx = -1;
-                        this.AddHeightLayer();
-                    }
+                    GUILayout.Space(5);
                 }
-                if (EditorGUI.EndChangeCheck())
+
+                EditorGUILayout.BeginHorizontal(this.m_CurrentHeightMapIdx < 0 ? "LightmapEditorSelectedHighlight" : "SelectionRect");
                 {
-                    Save(true);
+                    GUILayout.Space(5);
+                    EditorGUI.BeginChangeCheck();
+                    {
+                        if (GUILayout.Button("Base Layer", "BoldLabel", GUILayout.Width(150)))
+                        {
+                            this.m_CurrentHeightMapIdx = -1;
+                        }
+                    }
+
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        TerrainManager.CurrentHeightMapIdx = this.m_CurrentHeightMapIdx;
+                        this.titleEditorIdx = -1;
+                    }
+
+                    EditorGUI.BeginChangeCheck();
+                    {
+                        this.m_IsBaseLayerEnable = GUILayout.Toggle(this.m_IsBaseLayerEnable, "", "OL ToggleWhite", GUILayout.Width(20));
+                    }
+
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        TerrainManager.SelectedLayer = this.m_selectedLyaers;
+                        TerrainManager.IsBaseLayerEnable = this.m_IsBaseLayerEnable;
+                        this.ReloadSelectedLayers();
+                        Save(true);
+                    }
+
+                    GUILayout.Label(EditorGUIUtility.IconContent("IN LockButton on"));
+
+                    GUILayout.Space(5);
+                }
+                EditorGUILayout.EndHorizontal();
+
+                if (this.m_CurrentHeightMapIdx < 0)
+                {
+                    GUILayout.Space(5);
                 }
             }
             EditorGUILayout.EndVertical();
