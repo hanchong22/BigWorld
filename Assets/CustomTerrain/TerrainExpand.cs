@@ -532,7 +532,7 @@ namespace SeasunTerrain
             string path3 = waitToDelHole ? AssetDatabase.GetAssetPath(waitToDelHole) : null;
 
             AssetDatabase.DeleteAsset(path);
-            if(File.Exists(path))
+            if (File.Exists(path))
             {
                 File.Delete(path);
             }
@@ -546,7 +546,7 @@ namespace SeasunTerrain
             }
 
             if (waitToDelHole)
-            {               
+            {
                 AssetDatabase.DeleteAsset(path3);
                 if (File.Exists(path3))
                 {
@@ -558,7 +558,7 @@ namespace SeasunTerrain
 
 
             if (waitToDelTex2)
-            {                
+            {
                 AssetDatabase.DeleteAsset(path2);
                 if (File.Exists(path2))
                 {
@@ -676,23 +676,30 @@ namespace SeasunTerrain
                 allHoleMaps.Add(this.holeMapList[i]);
             }
 
-            for (int i = 1; i < allHoleMaps.Count; ++i)
+            if (allHoleMaps.Count == 1)
             {
-                Texture src = null;
-                if (i == 1)
+                Graphics.Blit(allHoleMaps[0], rtTmp1);
+            }
+            else
+            {
+                for (int i = 1; i < allHoleMaps.Count; ++i)
                 {
-                    src = allHoleMaps[0];
-                }
-                else
-                {
-                    src = rtTmp1;
-                }
+                    Texture src = null;
+                    if (i == 1)
+                    {
+                        src = allHoleMaps[0];
+                    }
+                    else
+                    {
+                        src = rtTmp1;
+                    }
 
-                addMaterial.SetTexture("_Tex1", src);
-                addMaterial.SetTexture("_Tex2", allHoleMaps[i]);
+                    addMaterial.SetTexture("_Tex1", src);
+                    addMaterial.SetTexture("_Tex2", allHoleMaps[i]);
 
-                Graphics.Blit(null, rtTmp2, addMaterial);
-                Graphics.Blit(rtTmp2, rtTmp1);
+                    Graphics.Blit(null, rtTmp2, addMaterial);
+                    Graphics.Blit(rtTmp2, rtTmp1);
+                }
             }
 
             ListPool<Texture2D>.Release(allHoleMaps);
@@ -729,7 +736,7 @@ namespace SeasunTerrain
 
             float maxValue = newTex.GetMaxValueFromTexture(false);
             float targetHeight = TerrainManager.BrashTargetHeight / terrain.terrainData.size.y;
-            float s = maxValue > targetHeight && limitType == 1 ? targetHeight : 1;
+            float s = maxValue > targetHeight && limitType == 1 ? targetHeight / maxValue : 1;
 
             if (heighMapID < 0)
             {
@@ -738,7 +745,7 @@ namespace SeasunTerrain
                     for (int x = 0; x < newTex.width; ++x)
                     {
                         Vector4 scolor = newTex.GetPixel(x, y);
-                        Vector4 color = new Vector4(Mathf.Max(0, scolor.x) * s, Mathf.Max(0, scolor.y) * s, 0, 0);
+                        Vector4 color = new Vector4(Mathf.Max(0, scolor.x) / 2f * s, Mathf.Max(0, scolor.x) / 2f * s, 0, 0);
 
                         this.baseHeightMap.SetPixel(x, y, color);
                     }
@@ -932,7 +939,7 @@ namespace SeasunTerrain
 
         public void MergeHeightMapWithUpper(int idx)
         {
-            if(this.heightMapList.Count <= idx || this.originMapList.Count <= idx || this.rtHeightMapList.Count <= idx || this.holeMapList.Count <= idx || this.rtHoleMapList.Count <= idx)
+            if (this.heightMapList.Count <= idx || this.originMapList.Count <= idx || this.rtHeightMapList.Count <= idx || this.holeMapList.Count <= idx || this.rtHoleMapList.Count <= idx)
             {
                 this.CheckOrInitData();
             }

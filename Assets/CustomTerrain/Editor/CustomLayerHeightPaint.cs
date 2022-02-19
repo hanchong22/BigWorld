@@ -46,7 +46,7 @@ namespace SeasunTerrain
             public readonly GUIContent direction = EditorGUIUtility.TrTextContent("模糊方向", "向上模糊(1.0), 向下模糊 (-1.0) 或双向 (0.0)");
             public readonly GUIContent SetOverlay = EditorGUIUtility.TrTextContent("设置为覆盖层");
             public readonly GUIContent CancleOverlay = EditorGUIUtility.TrTextContent("设置为普通层");
-            public readonly GUIContent MergeWithUpper = EditorGUIUtility.TrTextContent("向上合并");
+            public readonly GUIContent MergeWithUpper = EditorGUIUtility.TrTextContent("向下合并");
             public readonly GUIContent save = EditorGUIUtility.TrTextContent("保存", "保存所修改");
             public readonly GUIStyle redTitle = new GUIStyle()
             {
@@ -412,14 +412,7 @@ namespace SeasunTerrain
 
             }
 
-            EditorGUILayout.EndVertical();
-
-            GUILayout.Space(3);
-
-
-            GUILayout.Space(2);
-
-            this.DrawLayers();
+            EditorGUILayout.EndVertical();        
 
             GUILayout.Space(2);
 
@@ -432,6 +425,12 @@ namespace SeasunTerrain
             }
 
             GUILayout.Space(3);
+
+            this.DrawLayers();
+
+            GUILayout.Space(2);
+
+          
 
             this.ExportImportLayers();
 
