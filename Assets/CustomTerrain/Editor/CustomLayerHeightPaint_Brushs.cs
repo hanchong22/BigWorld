@@ -15,11 +15,12 @@ namespace SeasunTerrain
             PaintHoles = 0,
             SetHeight = 1,
             SmoothHeight = 2,
+            StampHeight = 3,
         }
 
         public static PaintTypeEnum CurrentPaintType;
 
-        private string[] paintTypeNames = new string[] { "地洞", "设置高度", "平滑" };
+        private string[] paintTypeNames = new string[] { "地洞", "设置高度", "平滑", "印章" };
 
 
         private Material ApplyBrushHoleFromBaseInternal(PaintContext paintContext, float brushStrength, Texture brushTexture, BrushTransform brushXform)
@@ -41,7 +42,7 @@ namespace SeasunTerrain
             return mat;
         }
 
-        private  void ApplyBrushHole(PaintContext paintContext, float brushStrength, Texture brushTexture, BrushTransform brushXform)
+        private void ApplyBrushHole(PaintContext paintContext, float brushStrength, Texture brushTexture, BrushTransform brushXform)
         {
             Material mat = TerrainPaintUtility.GetBuiltinPaintMaterial();
             brushStrength = Event.current.shift ? brushStrength : -brushStrength;
@@ -72,6 +73,24 @@ namespace SeasunTerrain
             Graphics.Blit(paintContext.sourceRenderTexture, paintContext.destinationRenderTexture, mat, (int)TerrainPaintUtility.BuiltinPaintMaterialPasses.SmoothHeights);
 
             return mat;
+        }
+
+        public void StampHeightApplyBrushInternal(PaintContext paintContext, float brushStrength, Texture brushTexture, BrushTransform brushXform, Terrain terrain, bool negate)
+        {
+            Material mat = TerrainManager.GetPaintHeightExtMat();
+
+            float height = m_StampHeightTerrainSpace / terrain.terrainData.size.y;
+            if (negate)
+            {
+                height = -height;
+            }
+            Vector4 brushParams = new Vector4(brushStrength, 0.0f, height, m_MaxBlendAdd);
+            mat.SetTexture("_BrushTex", brushTexture);
+            mat.SetVector("_BrushParams", brushParams);
+
+            TerrainPaintUtility.SetupTerrainToolMaterialProperties(paintContext, brushXform, mat);
+
+            Graphics.Blit(paintContext.sourceRenderTexture, paintContext.destinationRenderTexture, mat, (int)TerrainPaintUtility.BuiltinPaintMaterialPasses.StampHeight);
         }
 
     }

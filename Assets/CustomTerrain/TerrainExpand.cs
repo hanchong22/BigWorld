@@ -726,6 +726,16 @@ namespace SeasunTerrain
             RenderTexture.ReleaseTemporary(rtTmp2);
         }
 
+        public void SaveTerrainDataToTexture(int heightMapId)
+        {
+            if(heightMapId < 0 || heightMapId >= this.heightMapList.Count)
+            {
+                return;
+            }
+
+
+        }
+
         public bool ReimportHeightmap(int heighMapID, Texture2D newTex, float scale, int limitType)
         {
             if (newTex.width != this.terrainData.heightmapTexture.width || newTex.height != this.terrainData.heightmapTexture.height)

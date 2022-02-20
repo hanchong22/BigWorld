@@ -23,6 +23,8 @@ namespace SeasunTerrain
         [SerializeField] string[] m_heightMapTitles;
         [SerializeField] bool m_IsBaseLayerEnable = true;
         [SerializeField] float m_direction = 0.0f;
+        [SerializeField] float m_StampHeightTerrainSpace = 0.0f;
+        [SerializeField] float m_MaxBlendAdd = 0.0f;
 
         bool isCreateTerrainMode = false;
         private static TileTerrainManagerTool m_CreateTool = null;
@@ -89,6 +91,8 @@ namespace SeasunTerrain
                     return this.GetStyles().description.text;
                 case PaintTypeEnum.SmoothHeight:
                     return "平滑地面高度";
+                case PaintTypeEnum.StampHeight:
+                    return "印章";
             }
 
             return "请选择一种笔刷";
@@ -260,6 +264,34 @@ namespace SeasunTerrain
 
                 TerrainPaintUtility.EndPaintHeightmap(paintContextTmp, "Terrain Paint - Smooth Height");
             }
+            else if(CurrentPaintType == PaintTypeEnum.StampHeight)
+            {
+                if (Event.current.type == EventType.MouseDrag)
+                    return true;
+
+                BrushTransform brushXform = TerrainPaintUtility.CalculateBrushTransform(terrain, editContext.uv, editContext.brushSize, 0.0f);
+                PaintContextExp paintContextTmp = TerrainManager.BeginPaintHeightMapLyaer(terrain, brushXform.GetBrushXYBounds(), this.m_CurrentHeightMapIdx);
+                StampHeightApplyBrushInternal(paintContextTmp, editContext.brushStrength, editContext.brushTexture, brushXform, terrain, Event.current.shift);
+
+                for (int i = 0; i < paintContextTmp.terrainCount; ++i)
+                {
+                    TerrainExpand terrainExpandData = paintContextTmp.GetTerrain(i).gameObject.GetComponent<TerrainExpand>();
+                    if (!terrainExpandData)
+                    {
+                        terrainExpandData = paintContextTmp.GetTerrain(i).gameObject.AddComponent<TerrainExpand>();
+                    }
+
+                    terrainExpandData.OnPaint(this.m_CurrentHeightMapIdx, paintContextTmp, i, (Event.current.shift ? -1 : 1));
+
+                    if (!this.waitToSaveTerrains.Contains(terrainExpandData))
+                    {
+                        this.waitToSaveTerrains.Add(terrainExpandData);
+                    }
+                }
+
+                TerrainPaintUtility.EndPaintHeightmap(paintContextTmp, "Terrain Paint - Stamp");
+                return true;
+            }
 
 
             return true;
@@ -276,6 +308,12 @@ namespace SeasunTerrain
             Event evt = Event.current;
             if (evt.control && (evt.type == EventType.ScrollWheel))
             {
+                if (CurrentPaintType == PaintTypeEnum.StampHeight)
+                {
+                    const float k_mouseWheelToHeightRatio = -0.0004f;
+                    this.m_StampHeightTerrainSpace += Event.current.delta.y * k_mouseWheelToHeightRatio * editContext.raycastHit.distance;
+                }
+
                 evt.Use();
                 editContext.Repaint();
             }
@@ -293,10 +331,7 @@ namespace SeasunTerrain
                 BrushTransform brushXform = TerrainPaintUtility.CalculateBrushTransform(terrain, editContext.raycastHit.textureCoord, editContext.brushSize, 0.0f);
                 PaintContext paintContext = TerrainPaintUtility.BeginPaintHeightmap(terrain, brushXform.GetBrushXYBounds(), 1);
 
-                Material material = TerrainPaintUtilityEditor.GetDefaultBrushPreviewMaterial();
-
-                TerrainPaintUtilityEditor.DrawBrushPreview(
-                    paintContext, TerrainPaintUtilityEditor.BrushPreview.SourceRenderTexture, editContext.brushTexture, brushXform, material, 0);
+                Material material = TerrainPaintUtilityEditor.GetDefaultBrushPreviewMaterial();               
 
                 if (CurrentPaintType == PaintTypeEnum.SetHeight)
 
@@ -321,12 +356,28 @@ namespace SeasunTerrain
                 }
                 else if (CurrentPaintType == PaintTypeEnum.PaintHoles)
                 {
-
+                    TerrainPaintUtilityEditor.DrawBrushPreview(
+                  paintContext, TerrainPaintUtilityEditor.BrushPreview.SourceRenderTexture, editContext.brushTexture, brushXform, material, 0);
                 }
                 else if (CurrentPaintType == PaintTypeEnum.SmoothHeight)
                 {
                     TerrainPaintUtilityEditor.DrawBrushPreview(paintContext, TerrainPaintUtilityEditor.BrushPreview.SourceRenderTexture, editContext.brushTexture, brushXform, TerrainPaintUtilityEditor.GetDefaultBrushPreviewMaterial(), 0);
                     TerrainPaintUtility.ReleaseContextResources(paintContext);
+                }  
+                else if(CurrentPaintType == PaintTypeEnum.StampHeight)
+                {
+                    StampHeightApplyBrushInternal(paintContext, editContext.brushStrength, editContext.brushTexture, brushXform, terrain, evt.shift);
+                    RenderTexture.active = paintContext.oldRenderTexture;
+
+                    material.SetTexture("_HeightmapOrig", paintContext.sourceRenderTexture);
+
+                    TerrainPaintUtilityEditor.DrawBrushPreview(
+                        paintContext, TerrainPaintUtilityEditor.BrushPreview.DestinationRenderTexture, editContext.brushTexture, brushXform, material, 1);
+                }
+                else
+                {
+                    TerrainPaintUtilityEditor.DrawBrushPreview(
+                   paintContext, TerrainPaintUtilityEditor.BrushPreview.SourceRenderTexture, editContext.brushTexture, brushXform, material, 0);
                 }
 
                 TerrainPaintUtility.ReleaseContextResources(paintContext);
@@ -363,6 +414,8 @@ namespace SeasunTerrain
             if (GUILayout.Button(this.isCreateTerrainMode ? "关闭创建" : "创建邻接地型"))
             {
                 this.isCreateTerrainMode = !this.isCreateTerrainMode;
+                this.ResertRotationParams();
+                this.isRotationLayer = false;
             }
 
             GUILayout.Space(3);
@@ -411,8 +464,28 @@ namespace SeasunTerrain
             {
 
             }
+            else if(CustomLayerHeightPaint.CurrentPaintType == PaintTypeEnum.StampHeight)
+            {
+                EditorGUI.BeginChangeCheck();
+                {
+                    EditorGUI.BeginChangeCheck();
+                    float height = Mathf.Abs(m_StampHeightTerrainSpace);
+                    bool stampDown = (m_StampHeightTerrainSpace < 0.0f);
+                    height = EditorGUILayout.Slider("印章高度", height, 0, terrain.terrainData.size.y);
+                    stampDown = EditorGUILayout.Toggle("下降高度", stampDown);
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        m_StampHeightTerrainSpace = (stampDown ? -height : height);
+                    }
+                }
+                m_MaxBlendAdd = EditorGUILayout.Slider("混合", m_MaxBlendAdd, 0.0f, 1.0f);
+                if (EditorGUI.EndChangeCheck())
+                {
+                    Save(true);
+                }
+            }
 
-            EditorGUILayout.EndVertical();        
+            EditorGUILayout.EndVertical();
 
             GUILayout.Space(2);
 
@@ -430,7 +503,7 @@ namespace SeasunTerrain
 
             GUILayout.Space(2);
 
-          
+
 
             this.ExportImportLayers();
 
@@ -482,7 +555,7 @@ namespace SeasunTerrain
 
             EditorGUILayout.BeginVertical("sv_iconselector_back");
             {
-               
+
 
                 EditorGUI.BeginChangeCheck();
                 {
@@ -541,6 +614,11 @@ namespace SeasunTerrain
                             {
                                 TerrainManager.CurrentHeightMapIdx = this.m_CurrentHeightMapIdx;
                                 this.titleEditorIdx = -1;
+                            }
+
+                            if (GUILayout.Button(EditorGUIUtility.IconContent("Animation.Play"), GUILayout.Width(25)))
+                            {
+                                this.SaveTerrainDataToTexture(i);
                             }
 
                             if (GUILayout.Button(EditorGUIUtility.IconContent("editicon.sml"), GUILayout.Width(25)))
@@ -664,6 +742,15 @@ namespace SeasunTerrain
         int rotationTileType = 0;
         float layerHeightScale = 1f;
 
+        private void ResertRotationParams()
+        {
+            this.rotationAngle = 0f;
+            this.rotationPivot = new Vector4(0.5f, 0.5f, 0, 0);
+            this.layerScale = 1f;
+            this.rotationTileType = 0;
+            this.layerHeightScale = 1f;
+        }
+
         private void RotationLayerUI()
         {
             if (!this.isRotationLayer)
@@ -672,6 +759,7 @@ namespace SeasunTerrain
                 {
                     if (GUILayout.Button("旋转图层"))
                     {
+                        this.ResertRotationParams();
                         this.isRotationLayer = true;
                     }
                 }
@@ -683,6 +771,7 @@ namespace SeasunTerrain
                 {
                     if (GUILayout.Button("完成旋转"))
                     {
+                        this.ResertRotationParams();
                         this.isRotationLayer = false;
                     }
                 }
@@ -1149,6 +1238,19 @@ namespace SeasunTerrain
             for (int i = 0; i < TerrainManager.AllTerrain.Count; ++i)
             {
                 TerrainManager.AllTerrain[i].GetComponent<TerrainExpand>()?.ReLoadLayer(1);
+            }
+        }
+
+        private void SaveTerrainDataToTexture(int layerId)
+        {
+            if (TerrainManager.AllTerrain.Count == 0)
+            {
+                TerrainManager.InitAllTerrain(this.m_HeightMapNumber, this.m_CurrentHeightMapIdx, this.m_TargetHeight);
+            }
+
+            for (int i = 0; i < TerrainManager.AllTerrain.Count; ++i)
+            {
+                TerrainManager.AllTerrain[i].GetComponent<TerrainExpand>()?.SaveTerrainDataToTexture(layerId);
             }
         }
 
