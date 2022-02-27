@@ -22,6 +22,29 @@ namespace SeasunTerrain
 
         public static Material RotationMaterial { get; set; }
 
+        public static bool CheckAllTerrainStatus()
+        {
+            if(TerrainManager.AllTerrain == null || TerrainManager.AllTerrain.Count == 0)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < TerrainManager.AllTerrain.Count; ++i)
+            {
+                if(!TerrainManager.AllTerrain[i] || !TerrainManager.AllTerrain[i].gameObject || !TerrainManager.AllTerrain[i].gameObject.GetComponent<TerrainExpand>())
+                {
+                    return false;
+                }
+            }
+
+            if (GameObject.FindObjectsOfType<Terrain>().Length != TerrainManager.AllTerrain.Count)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
         public static void InitAllTerrain(int heightMapNumber, int curEditorIdx, float targetHeight)
         {
             TerrainManager.HeightMapNumber = heightMapNumber;
