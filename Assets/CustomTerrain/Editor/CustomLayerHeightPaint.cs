@@ -46,8 +46,8 @@ namespace SeasunTerrain
             public readonly GUIContent height = EditorGUIUtility.TrTextContent("画笔高度", "可以直接设置画笔高度，也可以在地形上按住shift和鼠标滚轮进行调整");
             public readonly GUIContent heightValueScale = EditorGUIUtility.TrTextContent("高度值缩放");
             public readonly GUIContent direction = EditorGUIUtility.TrTextContent("模糊方向", "向上模糊(1.0), 向下模糊 (-1.0) 或双向 (0.0)");
-            public readonly GUIContent SetOverlay = EditorGUIUtility.TrTextContent("设置为覆盖层");
-            public readonly GUIContent CancleOverlay = EditorGUIUtility.TrTextContent("设置为普通层");
+            public readonly GUIContent SetOverlay = EditorGUIUtility.TrTextContent("覆盖层");
+            public readonly GUIContent CancleOverlay = EditorGUIUtility.TrTextContent("普通层");
             public readonly GUIContent MergeWithUpper = EditorGUIUtility.TrTextContent("向下合并");
             public readonly GUIContent save = EditorGUIUtility.TrTextContent("保存", "保存所修改");
             public readonly GUIStyle redTitle = new GUIStyle()
@@ -503,17 +503,11 @@ namespace SeasunTerrain
 
             GUILayout.Space(2);
 
-
-
             this.ExportImportLayers();
 
             GUILayout.Space(3);
 
             this.RotationLayerUI();
-
-            GUILayout.Space(3);
-
-            this.SetOverlayLayer();
 
             GUILayout.Space(3);
 
@@ -616,10 +610,13 @@ namespace SeasunTerrain
                                 this.titleEditorIdx = -1;
                             }
 
-                            if (GUILayout.Button(EditorGUIUtility.IconContent("Animation.Play"), GUILayout.Width(25)))
+                            int layerTypeIdx = 0;
+                            if (this.m_overlayLayers[i])
                             {
-                                this.SaveTerrainDataToTexture(i);
+                                layerTypeIdx = 1;
                             }
+
+                            this.m_overlayLayers[i] = EditorGUILayout.Popup(layerTypeIdx, new GUIContent[] { GetStyles().CancleOverlay, GetStyles().SetOverlay }, GUILayout.Width(80)) == 1;
 
                             if (GUILayout.Button(EditorGUIUtility.IconContent("editicon.sml"), GUILayout.Width(25)))
                             {
@@ -868,34 +865,7 @@ namespace SeasunTerrain
                 EditorGUILayout.EndVertical();
             }
         }
-
-        private void SetOverlayLayer()
-        {
-            if (this.m_CurrentHeightMapIdx < 0)
-            {
-                return;
-            }
-
-            EditorGUILayout.BeginVertical();
-            if (this.m_overlayLayers[this.m_CurrentHeightMapIdx])
-            {
-                if (GUILayout.Button(GetStyles().CancleOverlay))
-                {
-                    this.m_overlayLayers[this.m_CurrentHeightMapIdx] = false;
-                    TerrainManager.OverlayLayers = this.m_overlayLayers;
-                }
-            }
-            else
-            {
-                if (GUILayout.Button(GetStyles().SetOverlay))
-                {
-                    this.m_overlayLayers[this.m_CurrentHeightMapIdx] = true;
-                    TerrainManager.OverlayLayers = this.m_overlayLayers;
-                }
-            }
-            EditorGUILayout.EndVertical();
-        }
-
+   
         private void ExportImportLayers()
         {
             if (this.expImportStatus == ExpImportStatus.None)
@@ -1336,7 +1306,7 @@ namespace SeasunTerrain
                 return;
             }
 
-            if (!EditorUtility.DisplayDialog(this.GetStyles().MergeWithUpper.text, "确认将此图层与上一层合并，并且删除此图层吗？", "确认", "取消"))
+            if (!EditorUtility.DisplayDialog(this.GetStyles().MergeWithUpper.text, "确认将此图层与下一层合并，并且删除此图层吗？", "确认", "取消"))
             {
                 return;
             }

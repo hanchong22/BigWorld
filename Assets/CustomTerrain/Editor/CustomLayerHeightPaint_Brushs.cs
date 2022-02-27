@@ -18,7 +18,7 @@ namespace SeasunTerrain
             StampHeight = 3,
         }
 
-        public static PaintTypeEnum CurrentPaintType;
+        public static PaintTypeEnum CurrentPaintType = PaintTypeEnum.SetHeight;
 
         private string[] paintTypeNames = new string[] { "地洞", "设置高度", "平滑", "印章" };
 
